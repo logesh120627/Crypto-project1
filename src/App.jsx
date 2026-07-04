@@ -6,6 +6,7 @@ const COINS = [
   { id: "solana", symbol: "SOL", name: "Solana" },
   { id: "binancecoin", symbol: "BNB", name: "BNB" },
   { id: "ripple", symbol: "XRP", name: "XRP" },
+  { id: "labtoken", symbol: "LAB", name: "LAB" }
 ];
 
 const STYLES = `
