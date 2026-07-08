@@ -163,7 +163,43 @@ function MiniChart({ prices, positive }) {
   }, [prices, positive]);
   return <canvas ref={canvasRef} style={{ width: "100%", height: "80px", display: "block" }} />;
 }
-
+const AGENTS = [
+  {
+    id: "bull",
+    name: "Bull Trader",
+    emoji: "🟢",
+    color: "#00e5a0",
+    role: "You are an aggressive bull trader. Find every reason why this coin will go UP. Look at positive momentum, support levels, buying pressure, and bullish signals. Be confident and specific with numbers.",
+  },
+  {
+    id: "bear",
+    name: "Bear Trader",
+    emoji: "🔴",
+    color: "#ff4d72",
+    role: "You are a cautious bear trader. Find every reason why this coin will go DOWN. Look at resistance levels, selling pressure, bearish divergence, and risk factors. Be specific with numbers.",
+  },
+  {
+    id: "technical",
+    name: "Technical Analyst",
+    emoji: "📊",
+    color: "#a78bfa",
+    role: "You are an expert technical analyst. Analyze price action, trend direction, key support and resistance levels, momentum, and chart patterns based on the data provided. Give specific price levels.",
+  },
+  {
+    id: "sentiment",
+    name: "Sentiment Analyst",
+    emoji: "💭",
+    color: "#f0c040",
+    role: "You are a market sentiment expert. Analyze the market mood, fear and greed indicators, volume trends, and overall market psychology. Give a sentiment score 0-100 and explain what it means.",
+  },
+  {
+    id: "risk",
+    name: "Risk Manager",
+    emoji: "🛡️",
+    color: "#60a5fa",
+    role: "You are a professional risk manager. Assess the overall risk of trading this coin right now. Give a risk rating Low/Medium/High, suggest stop loss and take profit levels, and recommend position size as % of portfolio.",
+  },
+];
 const QUICK_QUESTIONS = [
   "Should I buy now?",
   "Key support levels?",
@@ -183,6 +219,10 @@ export default function App() {
   const [stopLoss, setStopLoss] = useState("");
   const [takeProfit, setTakeProfit] = useState("");
   const [capital, setCapital] = useState("");
+  const [agentResponses, setAgentResponses] = useState({});
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [debateStarted, setDebateStarted] = useState(false);
+  const [consensus, setConsensus] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -250,7 +290,101 @@ export default function App() {
     }
     setAiLoading(false);
   }
+  async function runAgentDebate() {
+    if (!coin) return;
+    setAgentLoading(true);
+    setDebateStarted(true);
+    setAgentResponses({});
+    setConsensus(null);
 
+    const coinInfo = `${selected.name} (${selected.symbol}): 
+    Price: $${coin.current_price?.toLocaleString()}, 
+    24h Change: ${change24h?.toFixed(2)}%, 
+    7d Change: ${coin.price_change_percentage_7d_in_currency?.toFixed(2)}%, 
+    Market Cap: ${fmt(coin.market_cap)}, 
+    24h High: $${coin.high_24h?.toLocaleString()}, 
+    24h Low: $${coin.low_24h?.toLocaleString()}, 
+    Volume: ${fmt(coin.total_volume)}.`;
+
+    const responses = {};
+
+    for (const agent of AGENTS) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-8b-instant",
+            max_tokens: 1000,
+            messages: [
+              {
+                role: "system",
+                content: agent.role
+              },
+              {
+                role: "user",
+                content: `Analyze this live market data and give your expert opinion in 3-4 sentences:\n${coinInfo}`
+              }
+            ],
+          }),
+        });
+        const data = await res.json();
+        responses[agent.id] = data.choices?.[0]?.message?.content || "No response.";
+      } catch (e) {
+        responses[agent.id] = "Failed to get response.";
+      }
+      setAgentResponses({ ...responses });
+    }
+
+    // Calculate consensus
+    const bullish = responses["bull"] || "";
+    const bearish = responses["bear"] || "";
+    const technical = responses["technical"] || "";
+    
+    try {
+      const consensusRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          max_tokens: 1000,
+          messages: [
+            {
+              role: "system",
+              content: "You are a senior trading committee chair. Based on the analysis from multiple traders, give a final consensus verdict. Be decisive and specific."
+            },
+            {
+              role: "user",
+              content: `Based on these expert opinions about ${selected.name}:
+              
+Bull Trader says: ${bullish}
+Bear Trader says: ${bearish}  
+Technical Analyst says: ${technical}
+
+Give a final verdict in this exact format:
+SIGNAL: [BUY/SELL/HOLD]
+CONFIDENCE: [0-100]%
+TARGET: $[price]
+STOP: $[price]
+SUMMARY: [2 sentences max]`
+            }
+          ],
+        }),
+      });
+      const consensusData = await consensusRes.json();
+      setConsensus(consensusData.choices?.[0]?.message?.content || "");
+    } catch (e) {
+      setConsensus("Failed to generate consensus.");
+    }
+
+    setAgentLoading(false);
+  }
   const change7d = coin?.price_change_percentage_7d_in_currency ?? 0;
   const rawSentiment = 50 + change24h * 2 + change7d * 0.5;
   const sentiment = Math.min(100, Math.max(0, rawSentiment));
@@ -436,7 +570,100 @@ export default function App() {
           )}
           {error && <div className="error-msg">{error}</div>}
         </div>
+        {/* Multi-Agent Debate Panel */}
+        <div style={{
+          background: "#13131f", border: "1px solid #1e1e30",
+          borderRadius: "12px", padding: "20px", marginTop: "20px"
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", fontWeight: "600",
+                color: "#a78bfa", background: "#1a0a2a", border: "1px solid #a78bfa44",
+                padding: "3px 8px", borderRadius: "4px", letterSpacing: "1px"
+              }}>MULTI-AGENT</div>
+              <div style={{ fontSize: "14px", fontWeight: "600", color: "#e8e8f0" }}>
+                AI Trader Debate — {selected.symbol}
+              </div>
+            </div>
+            <button
+              onClick={runAgentDebate}
+              disabled={agentLoading}
+              style={{
+                background: agentLoading ? "#1a1a2a" : "#a78bfa",
+                color: agentLoading ? "#555" : "#0a0a0f",
+                border: "none", borderRadius: "8px",
+                padding: "8px 16px", fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: "13px", fontWeight: "700", cursor: agentLoading ? "not-allowed" : "pointer",
+                transition: "opacity 0.2s"
+              }}
+            >
+              {agentLoading ? "Debating…" : "🗣️ Start Debate"}
+            </button>
+          </div>
 
+          {/* Agent Cards */}
+          {debateStarted && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+              {AGENTS.map((agent) => (
+                <div key={agent.id} style={{
+                  background: "#0a0a0f",
+                  border: "1px solid " + agent.color + "33",
+                  borderLeft: "3px solid " + agent.color,
+                  borderRadius: "8px", padding: "14px"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "16px" }}>{agent.emoji}</span>
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "11px",
+                      fontWeight: "600", color: agent.color, textTransform: "uppercase",
+                      letterSpacing: "1px"
+                    }}>{agent.name}</span>
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#b0b0c0", lineHeight: "1.7" }}>
+                    {agentResponses[agent.id] ? (
+                      agentResponses[agent.id]
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#444" }}>
+                        <div className="typing-dots"><span /><span /><span /></div>
+                        <span>Analyzing…</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Consensus */}
+          {consensus && (
+            <div style={{
+              background: "#0d1a12", border: "1px solid #00e5a033",
+              borderRadius: "10px", padding: "16px"
+            }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px",
+                marginBottom: "10px", fontWeight: "600"
+              }}>⚖️ AI Committee Consensus</div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "13px",
+                color: "#c0c0d0", lineHeight: "1.8", whiteSpace: "pre-line"
+              }}>{consensus}</div>
+            </div>
+          )}
+
+          {/* Placeholder */}
+          {!debateStarted && (
+            <div style={{
+              textAlign: "center", padding: "30px",
+              color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px"
+            }}>
+              Click "Start Debate" to get analysis from 5 AI traders
+            </div>
+          )}
+        </div>
         {/* Trade Calculator */}
         <div style={{
           background: "#13131f", border: "1px solid #1e1e30",
