@@ -201,7 +201,7 @@ const AGENTS = [
   },
 ];
 const QUICK_QUESTIONS = [
-  "Should I buy now?",
+  "Key resistance levels?",
   "Key support levels?",
   "Bearish or bullish?",
   "What's the trend?",
@@ -371,6 +371,7 @@ Technical Analyst says: ${technical}
 Give a final verdict in this exact format:
 SIGNAL: [BUY/SELL/HOLD]
 CONFIDENCE: [0-100]%
+ENTRY: $[price]
 TARGET: $[price]
 STOP: $[price]
 SUMMARY: [2 sentences max]`
