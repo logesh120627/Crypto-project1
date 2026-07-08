@@ -337,6 +337,7 @@ export default function App() {
         responses[agent.id] = "Failed to get response.";
       }
       setAgentResponses({ ...responses });
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     // Calculate consensus
