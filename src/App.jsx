@@ -374,6 +374,9 @@ CONFIDENCE: [0-100]%
 ENTRY: $[price]
 TARGET: $[price]
 STOP: $[price]
+LEVERAGE: [1x-20x]
+RISK: [Low/Medium/High]
+TIMEFRAME: [15m/1h/4h/1d]
 SUMMARY: [2 sentences max]`
             }
           ],
