@@ -436,7 +436,15 @@ SUMMARY: [2 sentences max]`
       suggestedSL, suggestedTP, suggestedEntry, entrySuggestion, slSuggestion,
       tpSuggestion, rrColor };
   };
-
+  function extractAIValues() {
+    if (!consensus) return;
+    const entryMatch = consensus.match(/ENTRY:\s*\$?([\d,]+\.?\d*)/i);
+    const targetMatch = consensus.match(/TARGET:\s*\$?([\d,]+\.?\d*)/i);
+    const stopMatch = consensus.match(/STOP:\s*\$?([\d,]+\.?\d*)/i);
+    if (entryMatch) setEntryPrice(entryMatch[1].replace(/,/g, ""));
+    if (targetMatch) setTakeProfit(targetMatch[1].replace(/,/g, ""));
+    if (stopMatch) setStopLoss(stopMatch[1].replace(/,/g, ""));
+  }
   const calc = calcResults();
 
   return (
@@ -649,6 +657,18 @@ SUMMARY: [2 sentences max]`
                 color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px",
                 marginBottom: "10px", fontWeight: "600"
               }}>⚖️ AI Committee Consensus</div>
+              <button
+                onClick={extractAIValues}
+                style={{
+                  background: "#00e5a0", color: "#0a0a0f",
+                  border: "none", borderRadius: "6px",
+                  padding: "6px 14px", fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: "12px", fontWeight: "700", cursor: "pointer",
+                  marginBottom: "12px", float: "right"
+                }}
+              >
+                ⬇️ Use AI Values in Calculator
+              </button>
               <div style={{
                 fontFamily: "'JetBrains Mono', monospace", fontSize: "13px",
                 color: "#c0c0d0", lineHeight: "1.8", whiteSpace: "pre-line"
