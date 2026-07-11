@@ -374,8 +374,8 @@ export default function App() {
           "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          max_tokens: 1000,
+          model: "llama3-70b-8192",
+          max_tokens: 2000,
           messages: [
             {
               role: "system",
