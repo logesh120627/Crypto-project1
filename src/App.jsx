@@ -486,6 +486,55 @@ SUMMARY: [2 sentences max]`
     console.log("Target:", targetMatch?.[1]);
     console.log("Stop:", stopMatch?.[1]);
   }
+  function getSupportResistance() {
+    if (!prices || prices.length < 10) return { supports: [], resistances: [] };
+    
+    const supports = [];
+    const resistances = [];
+    
+    // Find local minima (support) and maxima (resistance)
+    for (let i = 2; i < prices.length - 2; i++) {
+      const prev2 = prices[i - 2];
+      const prev1 = prices[i - 1];
+      const curr = prices[i];
+      const next1 = prices[i + 1];
+      const next2 = prices[i + 2];
+
+      // Local minimum = support
+      if (curr < prev1 && curr < prev2 && curr < next1 && curr < next2) {
+        supports.push(parseFloat(curr.toFixed(2)));
+      }
+
+      // Local maximum = resistance
+      if (curr > prev1 && curr > prev2 && curr > next1 && curr > next2) {
+        resistances.push(parseFloat(curr.toFixed(2)));
+      }
+    }
+
+    // Remove duplicates that are too close (within 0.5%)
+    const filterClose = (levels) => {
+      const filtered = [];
+      levels.forEach((level) => {
+        const tooClose = filtered.some(
+          (f) => Math.abs(f - level) / level < 0.005
+        );
+        if (!tooClose) filtered.push(level);
+      });
+      return filtered;
+    };
+
+    // Sort and take top 3 each
+    const topSupports = filterClose(supports)
+      .sort((a, b) => b - a)
+      .slice(0, 3);
+    const topResistances = filterClose(resistances)
+      .sort((a, b) => a - b)
+      .slice(0, 3);
+
+    return { supports: topSupports, resistances: topResistances };
+  }
+
+const srLevels = getSupportResistance();
   const calc = calcResults();
 
   return (
@@ -620,6 +669,141 @@ SUMMARY: [2 sentences max]`
             </div>
           )}
           {error && <div className="error-msg">{error}</div>}
+        </div>
+        {/* Support & Resistance Panel */}
+        <div style={{
+          background: "#13131f", border: "1px solid #1e1e30",
+          borderRadius: "12px", padding: "20px", marginTop: "20px"
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", fontWeight: "600",
+              color: "#f0c040", background: "#2a2000", border: "1px solid #f0c04044",
+              padding: "3px 8px", borderRadius: "4px", letterSpacing: "1px"
+            }}>S&R</div>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: "#e8e8f0" }}>
+              Support & Resistance — {selected.symbol}
+            </div>
+          </div>
+
+          {/* Current Price */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "10px",
+            marginBottom: "16px", padding: "10px 14px",
+            background: "#0a0a0f", borderRadius: "8px",
+            border: "1px solid #1e1e30"
+          }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+              color: "#555", textTransform: "uppercase", letterSpacing: "1px"
+            }}>Current Price</div>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: "16px",
+              fontWeight: "700", color: isUp ? "#00e5a0" : "#ff4d72"
+            }}>${coin?.current_price?.toLocaleString()}</div>
+          </div>
+
+          {/* Two columns */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+
+            {/* Resistance Levels */}
+            <div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                color: "#ff4d72", textTransform: "uppercase", letterSpacing: "1px",
+                marginBottom: "10px", fontWeight: "600"
+              }}>🔴 Resistance Levels</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {srLevels.resistances.length > 0 ? srLevels.resistances.map((level, i) => {
+                  const diff = ((level - (coin?.current_price || 0)) / (coin?.current_price || 1) * 100).toFixed(2);
+                  return (
+                    <div key={i} style={{
+                      background: "#0a0a0f",
+                      border: "1px solid #ff4d7233",
+                      borderLeft: "3px solid #ff4d72",
+                      borderRadius: "8px", padding: "10px 14px",
+                      display: "flex", justifyContent: "space-between", alignItems: "center"
+                    }}>
+                      <div>
+                        <div style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: "14px", fontWeight: "600", color: "#ff4d72"
+                        }}>${level.toLocaleString()}</div>
+                        <div style={{ fontSize: "10px", color: "#555", marginTop: "2px" }}>
+                          R{i + 1} — {diff}% above
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: "10px", color: "#ff4d7288",
+                        fontFamily: "'JetBrains Mono', monospace"
+                      }}>
+                        {i === 0 ? "Nearest" : i === 1 ? "Mid" : "Strong"}
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div style={{ color: "#333", fontSize: "12px", fontFamily: "'JetBrains Mono', monospace" }}>
+                    No resistance found
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Support Levels */}
+            <div>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px",
+                marginBottom: "10px", fontWeight: "600"
+              }}>🟢 Support Levels</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {srLevels.supports.length > 0 ? srLevels.supports.map((level, i) => {
+                  const diff = (((coin?.current_price || 0) - level) / (coin?.current_price || 1) * 100).toFixed(2);
+                  return (
+                    <div key={i} style={{
+                      background: "#0a0a0f",
+                      border: "1px solid #00e5a033",
+                      borderLeft: "3px solid #00e5a0",
+                      borderRadius: "8px", padding: "10px 14px",
+                      display: "flex", justifyContent: "space-between", alignItems: "center"
+                    }}>
+                      <div>
+                        <div style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: "14px", fontWeight: "600", color: "#00e5a0"
+                        }}>${level.toLocaleString()}</div>
+                        <div style={{ fontSize: "10px", color: "#555", marginTop: "2px" }}>
+                          S{i + 1} — {diff}% below
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: "10px", color: "#00e5a088",
+                        fontFamily: "'JetBrains Mono', monospace"
+                      }}>
+                        {i === 0 ? "Nearest" : i === 1 ? "Mid" : "Strong"}
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div style={{ color: "#333", fontSize: "12px", fontFamily: "'JetBrains Mono', monospace" }}>
+                    No support found
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Note */}
+          <div style={{
+            marginTop: "14px", padding: "10px", background: "#0a0a0f",
+            borderRadius: "8px", fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "10px", color: "#444", lineHeight: "1.6"
+          }}>
+            * Support and Resistance levels calculated from 7-day price data.
+            Use these levels for setting Stop Loss and Take Profit in the Trade Calculator.
+          </div>
         </div>
         {/* Multi-Agent Debate Panel */}
         <div style={{
