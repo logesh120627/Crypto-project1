@@ -383,14 +383,14 @@ export default function App() {
             },
             {
               role: "user",
-               content: `Based on these expert opinions about ${selected.name}:
-       
-Bull Trader says: ${bullish}
-Bear Trader says: ${bearish}  
-Technical Analyst says: ${technical}
-On-Chain Analyst says: ${onchain}
-News Analyst says: ${news}
-Whale Tracker says: ${whale}
+              content: `Based on these expert opinions about ${selected.name}, give a final trading verdict:
+
+Bull: ${bullish.slice(0, 200)}
+Bear: ${bearish.slice(0, 200)}
+Technical: ${technical.slice(0, 200)}
+OnChain: ${responses["onchain"]?.slice(0, 200) || ""}
+News: ${responses["news"]?.slice(0, 200) || ""}
+Whale: ${responses["whale"]?.slice(0, 200) || ""}
 
 Give a final verdict in this exact format:
 SIGNAL: [BUY/SELL/HOLD]
