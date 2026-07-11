@@ -199,6 +199,27 @@ const AGENTS = [
     color: "#60a5fa",
     role: "You are a professional risk manager. Assess the overall risk of trading this coin right now. Give a risk rating Low/Medium/High, suggest stop loss and take profit levels, and recommend position size as % of portfolio.",
   },
+  {
+    id: "onchain",
+    name: "On-Chain Analyst",
+    emoji: "🌍",
+    color: "#34d399",
+    role: "You are an expert on-chain analyst. Based on the market data provided, analyze blockchain indicators like market cap to volume ratio, price momentum, and network activity signals. Estimate whether whales are accumulating or distributing based on volume and price action. Give specific insights about what the on-chain data suggests for the next 24-48 hours.",
+  },
+  {
+    id: "news",
+    name: "News Analyst",
+    emoji: "📰",
+    color: "#fb923c",
+    role: "You are a crypto news and sentiment analyst. Based on the current price action and market data, analyze what the likely news sentiment is around this coin. Consider the price trend, volume, and market cap changes to estimate whether news sentiment is positive, negative, or neutral. Give a news sentiment score 0-100 and explain key factors driving market narrative.",
+  },
+  {
+    id: "whale",
+    name: "Whale Tracker",
+    emoji: "🐋",
+    color: "#38bdf8",
+    role: "You are an expert whale movement tracker. Based on the volume data, price action, and market cap provided, analyze whether large players (whales) are likely buying or selling. Look for signs of accumulation (high volume + stable price) or distribution (high volume + price drop). Give specific insights about likely whale behavior and what retail traders should watch for.",
+  },
 ];
 const QUICK_QUESTIONS = [
   "Key resistance levels?",
@@ -362,11 +383,14 @@ export default function App() {
             },
             {
               role: "user",
-              content: `Based on these expert opinions about ${selected.name}:
-              
+               content: `Based on these expert opinions about ${selected.name}:
+       
 Bull Trader says: ${bullish}
 Bear Trader says: ${bearish}  
 Technical Analyst says: ${technical}
+On-Chain Analyst says: ${onchain}
+News Analyst says: ${news}
+Whale Tracker says: ${whale}
 
 Give a final verdict in this exact format:
 SIGNAL: [BUY/SELL/HOLD]
