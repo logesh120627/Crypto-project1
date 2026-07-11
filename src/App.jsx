@@ -468,9 +468,23 @@ SUMMARY: [2 sentences max]`
     const entryMatch = consensus.match(/ENTRY:\s*\$?([\d,]+\.?\d*)/i);
     const targetMatch = consensus.match(/TARGET:\s*\$?([\d,]+\.?\d*)/i);
     const stopMatch = consensus.match(/STOP:\s*\$?([\d,]+\.?\d*)/i);
+    const tpMatch = consensus.match(/TP:\s*\$?([\d,]+\.?\d*)/i);
+    const slMatch = consensus.match(/SL:\s*\$?([\d,]+\.?\d*)/i);
+
     if (entryMatch) setEntryPrice(entryMatch[1].replace(/,/g, ""));
+    
+    // Try TARGET first, then TP
     if (targetMatch) setTakeProfit(targetMatch[1].replace(/,/g, ""));
+    else if (tpMatch) setTakeProfit(tpMatch[1].replace(/,/g, ""));
+    
+    // Try STOP first, then SL
     if (stopMatch) setStopLoss(stopMatch[1].replace(/,/g, ""));
+    else if (slMatch) setStopLoss(slMatch[1].replace(/,/g, ""));
+
+    // Debug — show what was found
+    console.log("Entry:", entryMatch?.[1]);
+    console.log("Target:", targetMatch?.[1]);
+    console.log("Stop:", stopMatch?.[1]);
   }
   const calc = calcResults();
 
