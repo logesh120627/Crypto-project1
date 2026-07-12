@@ -244,6 +244,12 @@ export default function App() {
   const [agentLoading, setAgentLoading] = useState(false);
   const [debateStarted, setDebateStarted] = useState(false);
   const [consensus, setConsensus] = useState(null);
+  const [predictions, setPredictions] = useState([]);
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem("cryptomind_predictions") || "[]");
+    setPredictions(saved);
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -358,7 +364,7 @@ export default function App() {
         responses[agent.id] = "Failed to get response.";
       }
       setAgentResponses({ ...responses });
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     // Calculate consensus
@@ -535,6 +541,64 @@ SUMMARY: [2 sentences max]`
   }
 
 const srLevels = getSupportResistance();
+function savePrediction() {
+    if (!consensus || !coin) return;
+    const signalMatch = consensus.match(/SIGNAL:\s*(BUY|SELL|HOLD)/i);
+    const entryMatch = consensus.match(/ENTRY:\s*\$?([\d,]+\.?\d*)/i);
+    const targetMatch = consensus.match(/TARGET:\s*\$?([\d,]+\.?\d*)/i);
+    const stopMatch = consensus.match(/STOP:\s*\$?([\d,]+\.?\d*)/i);
+    const confidenceMatch = consensus.match(/CONFIDENCE:\s*(\d+)/i);
+
+    if (!signalMatch) {
+      alert("Run debate first to get a signal!");
+      return;
+    }
+
+    const prediction = {
+      id: Date.now(),
+      coin: selected.symbol,
+      coinName: selected.name,
+      signal: signalMatch?.[1]?.toUpperCase() || "HOLD",
+      entry: parseFloat(entryMatch?.[1]?.replace(/,/g, "") || coin.current_price),
+      target: parseFloat(targetMatch?.[1]?.replace(/,/g, "") || 0),
+      stop: parseFloat(stopMatch?.[1]?.replace(/,/g, "") || 0),
+      confidence: parseInt(confidenceMatch?.[1] || 0),
+      priceAtPrediction: coin.current_price,
+      timestamp: new Date().toISOString(),
+      result: "pending",
+    };
+
+    const existing = JSON.parse(localStorage.getItem("cryptomind_predictions") || "[]");
+    existing.unshift(prediction);
+    localStorage.setItem("cryptomind_predictions", JSON.stringify(existing.slice(0, 20)));
+    setPredictions(existing.slice(0, 20));
+    alert("Prediction saved! Check back in 24 hours to verify.");
+  }
+
+  function loadPredictions() {
+    const saved = JSON.parse(localStorage.getItem("cryptomind_predictions") || "[]");
+    setPredictions(saved);
+  }
+
+  function updatePredictionResult(id, result) {
+    const existing = JSON.parse(localStorage.getItem("cryptomind_predictions") || "[]");
+    const updated = existing.map((p) => p.id === id ? { ...p, result } : p);
+    localStorage.setItem("cryptomind_predictions", JSON.stringify(updated));
+    setPredictions(updated);
+  }
+
+  function clearPredictions() {
+    localStorage.removeItem("cryptomind_predictions");
+    setPredictions([]);
+  }
+
+  function getAccuracyStats() {
+    const completed = predictions.filter((p) => p.result !== "pending");
+    const wins = completed.filter((p) => p.result === "win").length;
+    const losses = completed.filter((p) => p.result === "loss").length;
+    const winRate = completed.length > 0 ? ((wins / completed.length) * 100).toFixed(1) : 0;
+    return { wins, losses, total: completed.length, winRate, pending: predictions.filter((p) => p.result === "pending").length };
+  }
   const calc = calcResults();
 
   return (
@@ -908,6 +972,164 @@ const srLevels = getSupportResistance();
               color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px"
             }}>
               Click "Start Debate" to get analysis from 5 AI traders
+            </div>
+          )}
+        </div>
+        {/* Prediction Accuracy Tracker */}
+        <div style={{
+          background: "#13131f", border: "1px solid #1e1e30",
+          borderRadius: "12px", padding: "20px", marginTop: "20px"
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", fontWeight: "600",
+                color: "#f0c040", background: "#2a2000", border: "1px solid #f0c04044",
+                padding: "3px 8px", borderRadius: "4px", letterSpacing: "1px"
+              }}>TRACKER</div>
+              <div style={{ fontSize: "14px", fontWeight: "600", color: "#e8e8f0" }}>
+                Prediction Accuracy Tracker
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                onClick={savePrediction}
+                disabled={!consensus}
+                style={{
+                  background: consensus ? "#f0c040" : "#1a1a2a",
+                  color: consensus ? "#0a0a0f" : "#555",
+                  border: "none", borderRadius: "6px",
+                  padding: "6px 14px", fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: "12px", fontWeight: "700", cursor: consensus ? "pointer" : "not-allowed"
+                }}
+              >
+                💾 Save Prediction
+              </button>
+              <button
+                onClick={clearPredictions}
+                style={{
+                  background: "#1a0a0a", color: "#ff4d72",
+                  border: "1px solid #ff4d7233", borderRadius: "6px",
+                  padding: "6px 14px", fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: "12px", fontWeight: "700", cursor: "pointer"
+                }}
+              >
+                🗑️ Clear
+              </button>
+            </div>
+          </div>
+
+          {/* Stats Row */}
+          {(() => {
+            const stats = getAccuracyStats();
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px", marginBottom: "16px" }}>
+                {[
+                  { label: "Win Rate", value: stats.winRate + "%", color: "#00e5a0" },
+                  { label: "Wins", value: stats.wins, color: "#00e5a0" },
+                  { label: "Losses", value: stats.losses, color: "#ff4d72" },
+                  { label: "Pending", value: stats.pending, color: "#f0c040" },
+                ].map((s) => (
+                  <div key={s.label} style={{
+                    background: "#0a0a0f", border: "1px solid #1e1e30",
+                    borderRadius: "8px", padding: "12px", textAlign: "center"
+                  }}>
+                    <div style={{
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                      color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px"
+                    }}>{s.label}</div>
+                    <div style={{
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "20px",
+                      fontWeight: "700", color: s.color
+                    }}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Predictions List */}
+          {predictions.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {predictions.map((p) => (
+                <div key={p.id} style={{
+                  background: "#0a0a0f",
+                  border: "1px solid " + (p.result === "win" ? "#00e5a033" : p.result === "loss" ? "#ff4d7233" : "#1e1e30"),
+                  borderLeft: "3px solid " + (p.result === "win" ? "#00e5a0" : p.result === "loss" ? "#ff4d72" : "#f0c040"),
+                  borderRadius: "8px", padding: "12px"
+                }}>
+                  {/* Top Row */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "12px",
+                        fontWeight: "700",
+                        color: p.signal === "BUY" ? "#00e5a0" : p.signal === "SELL" ? "#ff4d72" : "#f0c040"
+                      }}>{p.signal}</span>
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#888"
+                      }}>{p.coin}</span>
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444"
+                      }}>{new Date(p.timestamp).toLocaleDateString()}</span>
+                    </div>
+                    <div style={{
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                      color: p.result === "win" ? "#00e5a0" : p.result === "loss" ? "#ff4d72" : "#f0c040",
+                      fontWeight: "600", textTransform: "uppercase"
+                    }}>
+                      {p.result === "pending" ? "⏳ Pending" : p.result === "win" ? "✅ Win" : "❌ Loss"}
+                    </div>
+                  </div>
+
+                  {/* Price Row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+                    {[
+                      { label: "Entry", value: "$" + p.entry?.toLocaleString() },
+                      { label: "Target", value: "$" + p.target?.toLocaleString() },
+                      { label: "Stop", value: "$" + p.stop?.toLocaleString() },
+                      { label: "Confidence", value: p.confidence + "%" },
+                    ].map((item) => (
+                      <div key={item.label}>
+                        <div style={{ fontSize: "10px", color: "#444", marginBottom: "2px", fontFamily: "'JetBrains Mono', monospace" }}>{item.label}</div>
+                        <div style={{ fontSize: "12px", color: "#c0c0d0", fontFamily: "'JetBrains Mono', monospace", fontWeight: "600" }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Result Buttons */}
+                  {p.result === "pending" && (
+                    <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                      <button
+                        onClick={() => updatePredictionResult(p.id, "win")}
+                        style={{
+                          background: "#002a18", color: "#00e5a0",
+                          border: "1px solid #00e5a044", borderRadius: "6px",
+                          padding: "4px 12px", fontSize: "11px", fontWeight: "700",
+                          cursor: "pointer", fontFamily: "'JetBrains Mono', monospace"
+                        }}
+                      >✅ Mark Win</button>
+                      <button
+                        onClick={() => updatePredictionResult(p.id, "loss")}
+                        style={{
+                          background: "#2a0010", color: "#ff4d72",
+                          border: "1px solid #ff4d7244", borderRadius: "6px",
+                          padding: "4px 12px", fontSize: "11px", fontWeight: "700",
+                          cursor: "pointer", fontFamily: "'JetBrains Mono', monospace"
+                        }}
+                      >❌ Mark Loss</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              textAlign: "center", padding: "30px",
+              color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px"
+            }}>
+              Run a debate and click "Save Prediction" to start tracking accuracy
             </div>
           )}
         </div>
