@@ -14,9 +14,7 @@ const COINS = [
   { id: "litecoin", symbol: "LTC", name: "Litecoin" },
   { id: "tron", symbol: "TRX", name: "TRON" },
   { id: "sui", symbol: "SUI", name: "Sui" },
-  { id: "shiba-inu", symbol: "SHIB", name: "Shiba Inu" },
   { id: "polygon-ecosystem-token", symbol: "POL", name: "Polygon" },
-  { id: "pepe", symbol: "PEPE", name: "Pepe" },
   { id: "aptos", symbol: "APT", name: "Aptos" },
 ];
 
