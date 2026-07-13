@@ -11,12 +11,12 @@ const COINS = [
   { id: "avalanche-2", symbol: "AVAX", name: "Avalanche" },
   { id: "chainlink", symbol: "LINK", name: "Chainlink" },
   { id: "polkadot", symbol: "DOT", name: "Polkadot" },
-  { id: "shiba-inu", symbol: "SHIB", name: "Shiba Inu" },
   { id: "litecoin", symbol: "LTC", name: "Litecoin" },
   { id: "tron", symbol: "TRX", name: "TRON" },
-  { id: "matic-network", symbol: "MATIC", name: "Polygon" },
-  { id: "pepe", symbol: "PEPE", name: "Pepe" },
   { id: "sui", symbol: "SUI", name: "Sui" },
+  { id: "shiba-inu", symbol: "SHIB", name: "Shiba Inu" },
+  { id: "polygon-ecosystem-token", symbol: "POL", name: "Polygon" },
+  { id: "pepe", symbol: "PEPE", name: "Pepe" },
   { id: "aptos", symbol: "APT", name: "Aptos" },
 ];
 
