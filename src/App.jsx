@@ -6,7 +6,18 @@ const COINS = [
   { id: "solana", symbol: "SOL", name: "Solana" },
   { id: "binancecoin", symbol: "BNB", name: "BNB" },
   { id: "ripple", symbol: "XRP", name: "XRP" },
-  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin" }
+  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin" },
+  { id: "cardano", symbol: "ADA", name: "Cardano" },
+  { id: "avalanche-2", symbol: "AVAX", name: "Avalanche" },
+  { id: "chainlink", symbol: "LINK", name: "Chainlink" },
+  { id: "polkadot", symbol: "DOT", name: "Polkadot" },
+  { id: "shiba-inu", symbol: "SHIB", name: "Shiba Inu" },
+  { id: "litecoin", symbol: "LTC", name: "Litecoin" },
+  { id: "tron", symbol: "TRX", name: "TRON" },
+  { id: "matic-network", symbol: "MATIC", name: "Polygon" },
+  { id: "pepe", symbol: "PEPE", name: "Pepe" },
+  { id: "sui", symbol: "SUI", name: "Sui" },
+  { id: "aptos", symbol: "APT", name: "Aptos" },
 ];
 
 const STYLES = `
