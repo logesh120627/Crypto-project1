@@ -530,7 +530,9 @@ export default function Landing({ onLaunch }) {
             <button className="btn-primary" onClick={onLaunch}>
               🚀 Launch for Free
             </button>
-            <button className="btn-secondary">
+            <button className="btn-secondary" onClick={() => {
+              alert("📱 To install CryptoMind Pro:\n\n1. Open this site in Chrome\n2. Tap the 3 dots menu (⋮)\n3. Tap 'Install and create shortcut'\n4. Tap Install\n\nThe app will appear on your home screen!");
+            }}>
               📱 Install on Phone
             </button>
           </div>
