@@ -1,21 +1,21 @@
 import { useState, useEffect, useRef } from "react";
 
 const COINS = [
-  { id: "bitcoin", symbol: "BTC", name: "Bitcoin" },
-  { id: "ethereum", symbol: "ETH", name: "Ethereum" },
-  { id: "solana", symbol: "SOL", name: "Solana" },
-  { id: "binancecoin", symbol: "BNB", name: "BNB" },
-  { id: "ripple", symbol: "XRP", name: "XRP" },
-  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin" },
-  { id: "cardano", symbol: "ADA", name: "Cardano" },
-  { id: "avalanche-2", symbol: "AVAX", name: "Avalanche" },
-  { id: "chainlink", symbol: "LINK", name: "Chainlink" },
-  { id: "polkadot", symbol: "DOT", name: "Polkadot" },
-  { id: "litecoin", symbol: "LTC", name: "Litecoin" },
-  { id: "tron", symbol: "TRX", name: "TRON" },
-  { id: "sui", symbol: "SUI", name: "Sui" },
-  { id: "polygon-ecosystem-token", symbol: "POL", name: "Polygon" },
-  { id: "aptos", symbol: "APT", name: "Aptos" },
+  { id: "bitcoin", symbol: "BTC", name: "Bitcoin", binance: "BTCUSDT" },
+  { id: "ethereum", symbol: "ETH", name: "Ethereum", binance: "ETHUSDT" },
+  { id: "solana", symbol: "SOL", name: "Solana", binance: "SOLUSDT" },
+  { id: "binancecoin", symbol: "BNB", name: "BNB", binance: "BNBUSDT" },
+  { id: "ripple", symbol: "XRP", name: "XRP", binance: "XRPUSDT" },
+  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin", binance: "DOGEUSDT" },
+  { id: "cardano", symbol: "ADA", name: "Cardano", binance: "ADAUSDT" },
+  { id: "avalanche-2", symbol: "AVAX", name: "Avalanche", binance: "AVAXUSDT" },
+  { id: "chainlink", symbol: "LINK", name: "Chainlink", binance: "LINKUSDT" },
+  { id: "polkadot", symbol: "DOT", name: "Polkadot", binance: "DOTUSDT" },
+  { id: "litecoin", symbol: "LTC", name: "Litecoin", binance: "LTCUSDT" },
+  { id: "tron", symbol: "TRX", name: "TRON", binance: "TRXUSDT" },
+  { id: "matic-network", symbol: "POL", name: "Polygon", binance: "POLUSDT" },
+  { id: "sui", symbol: "SUI", name: "Sui", binance: "SUIUSDT" },
+  { id: "aptos", symbol: "APT", name: "Aptos", binance: "APTUSDT" },
 ];
 
 const STYLES = `
@@ -573,20 +573,50 @@ export default function App() {
     const saved = JSON.parse(localStorage.getItem("cryptomind_predictions") || "[]");
     setPredictions(saved);
   }, []);
-
+  // Auto refresh price every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [selected]);
   useEffect(() => {
     async function fetchData() {
       try {
+        // Fetch sparkline from CoinGecko (for chart only)
         const ids = COINS.map((c) => c.id).join(",");
-        const res = await fetch(
+        const geckoRes = await fetch(
           `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=true&price_change_percentage=24h,7d`
         );
-        const data = await res.json();
+        const geckoData = await geckoRes.json();
+        const geckoMap = {};
+        geckoData.forEach((d) => (geckoMap[d.id] = d));
+
+        // Fetch live prices from Binance
+        const binanceSymbols = COINS.map((c) => `"${c.binance}"`).join(",");
+        const binanceRes = await fetch(
+          `https://api.binance.com/api/v3/ticker/24hr?symbols=[${binanceSymbols}]`
+        );
+        const binanceData = await binanceRes.json();
+
+        // Merge Binance prices into market data
         const map = {};
-        data.forEach((d) => (map[d.id] = d));
+        COINS.forEach((coin) => {
+          const gecko = geckoMap[coin.id] || {};
+          const binance = binanceData.find((b) => b.symbol === coin.binance) || {};
+          map[coin.id] = {
+            ...gecko,
+            current_price: parseFloat(binance.lastPrice) || gecko.current_price,
+            high_24h: parseFloat(binance.highPrice) || gecko.high_24h,
+            low_24h: parseFloat(binance.lowPrice) || gecko.low_24h,
+            price_change_percentage_24h: parseFloat(binance.priceChangePercent) || gecko.price_change_percentage_24h,
+            total_volume: parseFloat(binance.quoteVolume) || gecko.total_volume,
+          };
+        });
+
         setMarketData(map);
-        const coin = map[selected.id];
-        if (coin?.sparkline_in_7d?.price) setPrices(coin.sparkline_in_7d.price);
+        const coinData = map[selected.id];
+        if (coinData?.sparkline_in_7d?.price) setPrices(coinData.sparkline_in_7d.price);
       } catch (e) {
         console.error(e);
       }
@@ -956,7 +986,10 @@ function savePrediction() {
         {/* Price */}
         <div className="price-row">
           <div className="price-main">
-            {coin ? "$" + coin.current_price?.toLocaleString() : "Loading…"}
+            {coin ? "$" + (coin.current_price >= 1
+              ? coin.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : coin.current_price?.toFixed(4)
+            ) : "Loading…"}
           </div>
           {coin && (
             <div className={`price-change ${isUp ? "up" : "down"}`}>
