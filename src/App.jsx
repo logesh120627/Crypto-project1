@@ -759,8 +759,31 @@ TARGET: $[price]
 STOP: $[price]
 LEVERAGE: [1x-20x]
 RISK: [Low/Medium/High]
-TIMEFRAME: [15m/1h/4h/1d]
-SUMMARY: [2 sentences max]`
+TIMEFRAME: [1h/4h/1d]
+BULLISH_FACTORS:
+- [factor 1]
+- [factor 2]
+- [factor 3]
+BEARISH_RISKS:
+- [risk 1]
+- [risk 2]
+- [risk 3]
+SCORES:
+TECHNICAL: [0-100]
+SENTIMENT: [0-100]
+VOLUME: [0-100]
+SUPPORT_ZONE: [0-100]
+WHALE_ACTIVITY: [0-100]
+VOTES:
+BULL_TRADER: [BUY/SELL/HOLD]
+BEAR_TRADER: [BUY/SELL/HOLD]
+TECHNICAL_ANALYST: [BUY/SELL/HOLD]
+SENTIMENT_ANALYST: [BUY/SELL/HOLD]
+RISK_MANAGER: [BUY/SELL/HOLD]
+WHY_NOT_100:
+- [reason 1]
+- [reason 2]
+- [reason 3]`
             }
           ],
         }),
@@ -1318,10 +1341,330 @@ function savePrediction() {
               >
                 ⬇️ Use AI Values in Calculator
               </button>
-              <div style={{
-                fontFamily: "'JetBrains Mono', monospace", fontSize: "13px",
-                color: "#c0c0d0", lineHeight: "1.8", whiteSpace: "pre-line"
-              }}>{consensus}</div>
+              {(() => {
+                // Parse all sections
+                const signalMatch = consensus.match(/SIGNAL:\s*(BUY|SELL|HOLD)/i);
+                const confidenceMatch = consensus.match(/CONFIDENCE:\s*(\d+)/i);
+                const signal = signalMatch?.[1]?.toUpperCase() || "HOLD";
+                const confidence = parseInt(confidenceMatch?.[1] || 0);
+                const signalColor = signal === "BUY" ? "#00e5a0" : signal === "SELL" ? "#ff4d72" : "#f0c040";
+
+                // Parse bullish factors
+                const bullishSection = consensus.match(/BULLISH_FACTORS:([\s\S]*?)BEARISH_RISKS:/i);
+                const bullishFactors = bullishSection?.[1]?.match(/- (.+)/g)?.map(f => f.replace("- ", "").trim()) || [];
+
+                // Parse bearish risks
+                const bearishSection = consensus.match(/BEARISH_RISKS:([\s\S]*?)SCORES:/i);
+                const bearishRisks = bearishSection?.[1]?.match(/- (.+)/g)?.map(f => f.replace("- ", "").trim()) || [];
+
+                // Parse scores
+                const technicalScore = parseInt(consensus.match(/TECHNICAL:\s*(\d+)/i)?.[1] || 0);
+                const sentimentScore = parseInt(consensus.match(/SENTIMENT:\s*(\d+)/i)?.[1] || 0);
+                const volumeScore = parseInt(consensus.match(/VOLUME:\s*(\d+)/i)?.[1] || 0);
+                const supportScore = parseInt(consensus.match(/SUPPORT_ZONE:\s*(\d+)/i)?.[1] || 0);
+                const whaleScore = parseInt(consensus.match(/WHALE_ACTIVITY:\s*(\d+)/i)?.[1] || 0);
+
+                // Parse votes
+                const bullVote = consensus.match(/BULL_TRADER:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
+                const bearVote = consensus.match(/BEAR_TRADER:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
+                const techVote = consensus.match(/TECHNICAL_ANALYST:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
+                const sentVote = consensus.match(/SENTIMENT_ANALYST:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
+                const riskVote = consensus.match(/RISK_MANAGER:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
+
+                const votes = [bullVote, bearVote, techVote, sentVote, riskVote];
+                const buyVotes = votes.filter(v => v === "BUY").length;
+                const sellVotes = votes.filter(v => v === "SELL").length;
+                const holdVotes = votes.filter(v => v === "HOLD").length;
+
+                const voteColor = (v) => v === "BUY" ? "#00e5a0" : v === "SELL" ? "#ff4d72" : "#f0c040";
+
+                const scores = [
+                  { label: "Technical Analysis", value: technicalScore },
+                  { label: "Sentiment", value: sentimentScore },
+                  { label: "Volume", value: volumeScore },
+                  { label: "Support Zone", value: supportScore },
+                  { label: "Whale Activity", value: whaleScore },
+                ];
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+                    {/* BIG SIGNAL */}
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      gap: "16px", padding: "20px",
+                      background: signal === "BUY" ? "rgba(0,229,160,0.06)" : signal === "SELL" ? "rgba(255,77,114,0.06)" : "rgba(240,192,64,0.06)",
+                      border: "2px solid " + signalColor + "44",
+                      borderRadius: "12px"
+                    }}>
+                      <div style={{
+                        fontSize: "48px", fontFamily: "'JetBrains Mono', monospace",
+                        fontWeight: "800", color: signalColor,
+                        textShadow: "0 0 30px " + signalColor + "88"
+                      }}>
+                        {signal === "BUY" ? "🟢" : signal === "SELL" ? "🔴" : "🟡"} {signal}
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: "32px", fontWeight: "700", color: signalColor
+                        }}>{confidence}%</div>
+                        <div style={{ fontSize: "11px", color: "#555", letterSpacing: "1px" }}>CONFIDENCE</div>
+                      </div>
+                    </div>
+
+                    {/* BULLISH & BEARISH side by side */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+
+                      {/* Bullish Factors */}
+                      <div style={{
+                        background: "rgba(0,229,160,0.04)",
+                        border: "1px solid rgba(0,229,160,0.15)",
+                        borderRadius: "10px", padding: "14px"
+                      }}>
+                        <div style={{
+                          fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                          color: "#00e5a0", textTransform: "uppercase",
+                          letterSpacing: "1px", marginBottom: "10px", fontWeight: "700"
+                        }}>📈 Bullish Factors</div>
+                        {bullishFactors.length > 0 ? bullishFactors.map((f, i) => (
+                          <div key={i} style={{
+                            display: "flex", alignItems: "flex-start", gap: "8px",
+                            marginBottom: "6px", fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5"
+                          }}>
+                            <span style={{ color: "#00e5a0", fontWeight: "700", marginTop: "1px" }}>✓</span>
+                            <span>{f}</span>
+                          </div>
+                        )) : (
+                          <div style={{ fontSize: "12px", color: "#333" }}>No bullish factors</div>
+                        )}
+                      </div>
+
+                      {/* Bearish Risks */}
+                      <div style={{
+                        background: "rgba(255,77,114,0.04)",
+                        border: "1px solid rgba(255,77,114,0.15)",
+                        borderRadius: "10px", padding: "14px"
+                      }}>
+                        <div style={{
+                          fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                          color: "#ff4d72", textTransform: "uppercase",
+                          letterSpacing: "1px", marginBottom: "10px", fontWeight: "700"
+                        }}>📉 Bearish Risks</div>
+                        {bearishRisks.length > 0 ? bearishRisks.map((r, i) => (
+                          <div key={i} style={{
+                            display: "flex", alignItems: "flex-start", gap: "8px",
+                            marginBottom: "6px", fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5"
+                          }}>
+                            <span style={{ color: "#ff4d72", fontWeight: "700", marginTop: "1px" }}>⚠</span>
+                            <span>{r}</span>
+                          </div>
+                        )) : (
+                          <div style={{ fontSize: "12px", color: "#333" }}>No bearish risks</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* SCORES */}
+                    <div style={{
+                      background: "#0a0a0f", border: "1px solid #1e1e30",
+                      borderRadius: "10px", padding: "14px"
+                    }}>
+                      <div style={{
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                        color: "#555", textTransform: "uppercase",
+                        letterSpacing: "1px", marginBottom: "12px", fontWeight: "600"
+                      }}>📊 Confidence Breakdown</div>
+
+                      {scores.map((s) => {
+                        const scoreColor = s.value >= 70 ? "#00e5a0" : s.value >= 50 ? "#f0c040" : "#ff4d72";
+                        return (
+                          <div key={s.label} style={{ marginBottom: "10px" }}>
+                            <div style={{
+                              display: "flex", justifyContent: "space-between", marginBottom: "4px"
+                            }}>
+                              <span style={{
+                                fontSize: "11px", color: "#888",
+                                fontFamily: "'JetBrains Mono', monospace"
+                              }}>{s.label}</span>
+                              <span style={{
+                                fontSize: "12px", fontWeight: "700",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                color: scoreColor
+                              }}>{s.value}/100</span>
+                            </div>
+                            <div style={{
+                              height: "5px", background: "rgba(255,255,255,0.05)",
+                              borderRadius: "3px", overflow: "hidden"
+                            }}>
+                              <div style={{
+                                height: "100%", width: s.value + "%",
+                                background: scoreColor,
+                                borderRadius: "3px", transition: "width 0.6s ease",
+                                boxShadow: "0 0 6px " + scoreColor + "88"
+                              }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* VOTES */}
+                    <div style={{
+                      background: "#0a0a0f", border: "1px solid #1e1e30",
+                      borderRadius: "10px", padding: "14px"
+                    }}>
+                      {/* WHY NOT 100% */}
+                    {(() => {
+                      const whySection = consensus.match(/WHY_NOT_100:([\s\S]*?)$/i);
+                      const reasons = whySection?.[1]?.match(/- (.+)/g)?.map(r => r.replace("- ", "").trim()) || [];
+                      const confidence = parseInt(consensus.match(/CONFIDENCE:\s*(\d+)/i)?.[1] || 0);
+                      const remaining = 100 - confidence;
+
+                      return reasons.length > 0 ? (
+                        <div style={{
+                          background: "rgba(240,192,64,0.04)",
+                          border: "1px solid rgba(240,192,64,0.15)",
+                          borderRadius: "10px", padding: "14px"
+                        }}>
+                          <div style={{
+                            fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                            color: "#f0c040", textTransform: "uppercase",
+                            letterSpacing: "1px", marginBottom: "4px", fontWeight: "700"
+                          }}>❓ Why Not 100%?</div>
+
+                          <div style={{
+                            fontSize: "11px", color: "#555",
+                            fontFamily: "'JetBrains Mono', monospace",
+                            marginBottom: "10px"
+                          }}>
+                            Confidence: {confidence}% — Missing {remaining}% due to:
+                          </div>
+
+                          {reasons.map((r, i) => (
+                            <div key={i} style={{
+                              display: "flex", alignItems: "flex-start",
+                              gap: "8px", marginBottom: "6px",
+                              fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5"
+                            }}>
+                              <span style={{
+                                color: "#f0c040", fontWeight: "700", marginTop: "1px"
+                              }}>•</span>
+                              <span>{r}</span>
+                            </div>
+                          ))}
+
+                          {/* Visual missing confidence bar */}
+                          <div style={{ marginTop: "12px" }}>
+                            <div style={{
+                              display: "flex", justifyContent: "space-between",
+                              marginBottom: "4px"
+                            }}>
+                              <span style={{
+                                fontSize: "10px", color: "#555",
+                                fontFamily: "'JetBrains Mono', monospace"
+                              }}>Achieved</span>
+                              <span style={{
+                                fontSize: "10px", color: "#555",
+                                fontFamily: "'JetBrains Mono', monospace"
+                              }}>Missing</span>
+                            </div>
+                            <div style={{
+                              height: "6px", background: "rgba(255,255,255,0.05)",
+                              borderRadius: "3px", overflow: "hidden",
+                              display: "flex"
+                            }}>
+                              <div style={{
+                                height: "100%", width: confidence + "%",
+                                background: confidence >= 70 ? "#00e5a0" : confidence >= 50 ? "#f0c040" : "#ff4d72",
+                                borderRadius: "3px 0 0 3px",
+                                transition: "width 0.6s ease"
+                              }} />
+                              <div style={{
+                                height: "100%", width: remaining + "%",
+                                background: "rgba(240,192,64,0.2)",
+                                borderRadius: "0 3px 3px 0"
+                              }} />
+                            </div>
+                            <div style={{
+                              display: "flex", justifyContent: "space-between",
+                              marginTop: "4px"
+                            }}>
+                              <span style={{
+                                fontSize: "11px", fontWeight: "700",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                color: confidence >= 70 ? "#00e5a0" : "#f0c040"
+                              }}>{confidence}%</span>
+                              <span style={{
+                                fontSize: "11px", fontWeight: "700",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                color: "#f0c04088"
+                              }}>-{remaining}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                      <div style={{
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+                        color: "#555", textTransform: "uppercase",
+                        letterSpacing: "1px", marginBottom: "12px", fontWeight: "600"
+                      }}>🗳️ Agent Votes</div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "12px" }}>
+                        {[
+                          { name: "🟢 Bull Trader", vote: bullVote },
+                          { name: "🔴 Bear Trader", vote: bearVote },
+                          { name: "📊 Technical", vote: techVote },
+                          { name: "💭 Sentiment", vote: sentVote },
+                          { name: "🛡️ Risk Manager", vote: riskVote },
+                        ].map((agent) => (
+                          <div key={agent.name} style={{
+                            display: "flex", justifyContent: "space-between",
+                            alignItems: "center", padding: "8px 12px",
+                            background: "rgba(255,255,255,0.02)",
+                            borderRadius: "6px",
+                            border: "1px solid rgba(255,255,255,0.04)"
+                          }}>
+                            <span style={{ fontSize: "11px", color: "#666" }}>{agent.name}</span>
+                            <span style={{
+                              fontSize: "11px", fontWeight: "700",
+                              fontFamily: "'JetBrains Mono', monospace",
+                              color: voteColor(agent.vote)
+                            }}>{agent.vote}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Vote Summary */}
+                      <div style={{
+                        display: "flex", gap: "10px",
+                        borderTop: "1px solid #1e1e30", paddingTop: "10px"
+                      }}>
+                        {[
+                          { label: "BUY", count: buyVotes, color: "#00e5a0" },
+                          { label: "SELL", count: sellVotes, color: "#ff4d72" },
+                          { label: "HOLD", count: holdVotes, color: "#f0c040" },
+                        ].map((v) => (
+                          <div key={v.label} style={{
+                            flex: 1, textAlign: "center", padding: "8px",
+                            background: v.count > 0 ? v.color + "11" : "transparent",
+                            border: "1px solid " + (v.count > 0 ? v.color + "33" : "#1e1e30"),
+                            borderRadius: "6px"
+                          }}>
+                            <div style={{
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: "18px", fontWeight: "700", color: v.color
+                            }}>{v.count}</div>
+                            <div style={{ fontSize: "10px", color: "#444", letterSpacing: "1px" }}>{v.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })()}
             </div>
           )}
 
