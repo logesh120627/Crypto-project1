@@ -567,6 +567,7 @@ export default function App() {
   const [agentLoading, setAgentLoading] = useState(false);
   const [debateStarted, setDebateStarted] = useState(false);
   const [consensus, setConsensus] = useState(null);
+  const [timeframe, setTimeframe] = useState("1h");
   const [predictions, setPredictions] = useState([]);
 
   useEffect(() => {
@@ -706,7 +707,7 @@ export default function App() {
               },
               {
                 role: "user",
-                content: `Analyze this live market data and give your expert opinion in 3-4 sentences:\n${coinInfo}`
+                content: `Analyze this live market data for ${timeframe} timeframe and give your expert opinion in 3-4 sentences:\n${coinInfo}`
               }
             ],
           }),
@@ -742,7 +743,7 @@ export default function App() {
             },
             {
               role: "user",
-              content: `Based on these expert opinions about ${selected.name}, give a final trading verdict:
+              content: `Based on these expert opinions about ${selected.name} for ${timeframe} timeframe, give a final trading verdict:
 
 Bull: ${bullish.slice(0, 200)}
 Bear: ${bearish.slice(0, 200)}
@@ -775,11 +776,11 @@ VOLUME: [0-100]
 SUPPORT_ZONE: [0-100]
 WHALE_ACTIVITY: [0-100]
 VOTES:
-BULL_TRADER: [BUY/SELL/HOLD]
-BEAR_TRADER: [BUY/SELL/HOLD]
-TECHNICAL_ANALYST: [BUY/SELL/HOLD]
-SENTIMENT_ANALYST: [BUY/SELL/HOLD]
-RISK_MANAGER: [BUY/SELL/HOLD]
+BULL_TRADER: [BUY/SELL/HOLD] | [one sentence reason]
+BEAR_TRADER: [BUY/SELL/HOLD] | [one sentence reason]
+TECHNICAL_ANALYST: [BUY/SELL/HOLD] | [one sentence reason]
+SENTIMENT_ANALYST: [BUY/SELL/HOLD] | [one sentence reason]
+RISK_MANAGER: [BUY/SELL/HOLD] | [one sentence reason]
 WHY_NOT_100:
 - [reason 1]
 - [reason 2]
@@ -1252,6 +1253,52 @@ function savePrediction() {
             Use these levels for setting Stop Loss and Take Profit in the Trade Calculator.
           </div>
         </div>
+        {/* Timeframe Selector */}
+        <div style={{
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "12px", padding: "16px 20px",
+          marginTop: "20px",
+          display: "flex", alignItems: "center", gap: "16px"
+        }}>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
+            color: "#555", textTransform: "uppercase", letterSpacing: "1px",
+            whiteSpace: "nowrap"
+          }}>Timeframe</div>
+
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {["15m", "1h", "4h", "1D", "1W"].map((tf) => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                style={{
+                  background: timeframe === tf ? "rgba(0,229,160,0.1)" : "rgba(255,255,255,0.03)",
+                  border: timeframe === tf ? "1px solid #00e5a0" : "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "8px", padding: "6px 14px",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "12px", fontWeight: "600",
+                  color: timeframe === tf ? "#00e5a0" : "#555",
+                  cursor: "pointer", transition: "all 0.2s"
+                }}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+
+          <div style={{
+            marginLeft: "auto",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "11px", color: "#444"
+          }}>
+            {timeframe === "15m" && "⚡ Scalping — Short term signals"}
+            {timeframe === "1h" && "📊 Day Trading — Hourly analysis"}
+            {timeframe === "4h" && "📈 Swing Trading — 4 hour signals"}
+            {timeframe === "1D" && "🗓️ Position Trading — Daily view"}
+            {timeframe === "1W" && "📅 Long Term — Weekly trend"}
+          </div>
+        </div>
         {/* Multi-Agent Debate Panel */}
         <div style={{
           background: "#13131f", border: "1px solid #1e1e30",
@@ -1342,325 +1389,306 @@ function savePrediction() {
                 ⬇️ Use AI Values in Calculator
               </button>
               {(() => {
-                // Parse all sections
                 const signalMatch = consensus.match(/SIGNAL:\s*(BUY|SELL|HOLD)/i);
                 const confidenceMatch = consensus.match(/CONFIDENCE:\s*(\d+)/i);
+                const entryMatch = consensus.match(/ENTRY:\s*\$?([\d,]+\.?\d*)/i);
+                const targetMatch = consensus.match(/TARGET:\s*\$?([\d,]+\.?\d*)/i);
+                const stopMatch = consensus.match(/STOP:\s*\$?([\d,]+\.?\d*)/i);
+                const riskMatch = consensus.match(/RISK:\s*(Low|Medium|High)/i);
+                const leverageMatch = consensus.match(/LEVERAGE:\s*([\dx]+)/i);
+                const timeframeMatch = consensus.match(/TIMEFRAME:\s*(\S+)/i);
+
                 const signal = signalMatch?.[1]?.toUpperCase() || "HOLD";
                 const confidence = parseInt(confidenceMatch?.[1] || 0);
                 const signalColor = signal === "BUY" ? "#00e5a0" : signal === "SELL" ? "#ff4d72" : "#f0c040";
 
-                // Parse bullish factors
+                // Bullish factors
                 const bullishSection = consensus.match(/BULLISH_FACTORS:([\s\S]*?)BEARISH_RISKS:/i);
                 const bullishFactors = bullishSection?.[1]?.match(/- (.+)/g)?.map(f => f.replace("- ", "").trim()) || [];
 
-                // Parse bearish risks
+                // Bearish risks
                 const bearishSection = consensus.match(/BEARISH_RISKS:([\s\S]*?)SCORES:/i);
                 const bearishRisks = bearishSection?.[1]?.match(/- (.+)/g)?.map(f => f.replace("- ", "").trim()) || [];
 
-                // Parse scores
-                const technicalScore = parseInt(consensus.match(/TECHNICAL:\s*(\d+)/i)?.[1] || 0);
-                const sentimentScore = parseInt(consensus.match(/SENTIMENT:\s*(\d+)/i)?.[1] || 0);
-                const volumeScore = parseInt(consensus.match(/VOLUME:\s*(\d+)/i)?.[1] || 0);
-                const supportScore = parseInt(consensus.match(/SUPPORT_ZONE:\s*(\d+)/i)?.[1] || 0);
-                const whaleScore = parseInt(consensus.match(/WHALE_ACTIVITY:\s*(\d+)/i)?.[1] || 0);
+                // Scores
+                const scores = [
+                  { label: "Technical Analysis", value: parseInt(consensus.match(/TECHNICAL:\s*(\d+)/i)?.[1] || 0) },
+                  { label: "Sentiment", value: parseInt(consensus.match(/SENTIMENT:\s*(\d+)/i)?.[1] || 0) },
+                  { label: "Volume", value: parseInt(consensus.match(/VOLUME:\s*(\d+)/i)?.[1] || 0) },
+                  { label: "Support Zone", value: parseInt(consensus.match(/SUPPORT_ZONE:\s*(\d+)/i)?.[1] || 0) },
+                  { label: "Whale Activity", value: parseInt(consensus.match(/WHALE_ACTIVITY:\s*(\d+)/i)?.[1] || 0) },
+                ];
 
-                // Parse votes
-                const bullVote = consensus.match(/BULL_TRADER:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
-                const bearVote = consensus.match(/BEAR_TRADER:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
-                const techVote = consensus.match(/TECHNICAL_ANALYST:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
-                const sentVote = consensus.match(/SENTIMENT_ANALYST:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
-                const riskVote = consensus.match(/RISK_MANAGER:\s*(BUY|SELL|HOLD)/i)?.[1]?.toUpperCase() || "—";
+                // Votes with reasons
+                const parseVote = (pattern) => {
+                  const match = consensus.match(pattern);
+                  if (!match) return { vote: "—", reason: "" };
+                  const parts = match[1].split("|");
+                  return {
+                    vote: parts[0]?.trim().toUpperCase() || "—",
+                    reason: parts[1]?.trim() || ""
+                  };
+                };
 
-                const votes = [bullVote, bearVote, techVote, sentVote, riskVote];
+                const agentVotes = [
+                  { name: "🟢 Bull Trader", ...parseVote(/BULL_TRADER:\s*(.+)/i) },
+                  { name: "🔴 Bear Trader", ...parseVote(/BEAR_TRADER:\s*(.+)/i) },
+                  { name: "📊 Technical", ...parseVote(/TECHNICAL_ANALYST:\s*(.+)/i) },
+                  { name: "💭 Sentiment", ...parseVote(/SENTIMENT_ANALYST:\s*(.+)/i) },
+                  { name: "🛡️ Risk Manager", ...parseVote(/RISK_MANAGER:\s*(.+)/i) },
+                ];
+
+                const votes = agentVotes.map(a => a.vote);
                 const buyVotes = votes.filter(v => v === "BUY").length;
                 const sellVotes = votes.filter(v => v === "SELL").length;
                 const holdVotes = votes.filter(v => v === "HOLD").length;
+                const totalVotes = agentVotes.filter(a => a.vote !== "—").length;
+                const agreementScore = Math.round((Math.max(buyVotes, sellVotes, holdVotes) / totalVotes) * 100);
 
-                const voteColor = (v) => v === "BUY" ? "#00e5a0" : v === "SELL" ? "#ff4d72" : "#f0c040";
+                // Why not 100
+                const whySection = consensus.match(/WHY_NOT_100:([\s\S]*?)$/i);
+                const reasons = whySection?.[1]?.match(/- (.+)/g)?.map(r => r.replace("- ", "").trim()) || [];
+                const remaining = 100 - confidence;
 
-                const scores = [
-                  { label: "Technical Analysis", value: technicalScore },
-                  { label: "Sentiment", value: sentimentScore },
-                  { label: "Volume", value: volumeScore },
-                  { label: "Support Zone", value: supportScore },
-                  { label: "Whale Activity", value: whaleScore },
-                ];
+                const voteColor = (v) => v === "BUY" ? "#00e5a0" : v === "SELL" ? "#ff4d72" : v === "HOLD" ? "#f0c040" : "#555";
+                const scoreColor = (v) => v >= 80 ? "#00e5a0" : v >= 60 ? "#f0c040" : "#ff4d72";
 
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 
-                    {/* BIG SIGNAL */}
+                    {/* BIG SIGNAL CARD */}
                     <div style={{
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      gap: "16px", padding: "20px",
-                      background: signal === "BUY" ? "rgba(0,229,160,0.06)" : signal === "SELL" ? "rgba(255,77,114,0.06)" : "rgba(240,192,64,0.06)",
-                      border: "2px solid " + signalColor + "44",
-                      borderRadius: "12px"
+                      background: signal === "BUY" ? "rgba(0,229,160,0.08)" : signal === "SELL" ? "rgba(255,77,114,0.08)" : "rgba(240,192,64,0.08)",
+                      border: "2px solid " + signalColor,
+                      borderRadius: "14px", padding: "24px",
+                      boxShadow: "0 0 40px " + signalColor + "22"
                     }}>
-                      <div style={{
-                        fontSize: "48px", fontFamily: "'JetBrains Mono', monospace",
-                        fontWeight: "800", color: signalColor,
-                        textShadow: "0 0 30px " + signalColor + "88"
-                      }}>
-                        {signal === "BUY" ? "🟢" : signal === "SELL" ? "🔴" : "🟡"} {signal}
+                      {/* Signal + Confidence */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div style={{
+                            fontSize: "56px", fontFamily: "'JetBrains Mono', monospace",
+                            fontWeight: "800", color: signalColor,
+                            textShadow: "0 0 40px " + signalColor
+                          }}>
+                            {signal === "BUY" ? "🟢" : signal === "SELL" ? "🔴" : "🟡"}
+                          </div>
+                          <div>
+                            <div style={{
+                              fontSize: "48px", fontFamily: "'JetBrains Mono', monospace",
+                              fontWeight: "800", color: signalColor, lineHeight: 1
+                            }}>{signal}</div>
+                            <div style={{ fontSize: "13px", color: "#555", marginTop: "4px" }}>
+                              {timeframe} Timeframe Signal
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{
+                            fontSize: "48px", fontFamily: "'JetBrains Mono', monospace",
+                            fontWeight: "800", color: signalColor, lineHeight: 1
+                          }}>{confidence}%</div>
+                          <div style={{ fontSize: "12px", color: "#555", marginTop: "4px" }}>CONFIDENCE</div>
+                        </div>
                       </div>
-                      <div style={{ textAlign: "center" }}>
-                        <div style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: "32px", fontWeight: "700", color: signalColor
-                        }}>{confidence}%</div>
-                        <div style={{ fontSize: "11px", color: "#555", letterSpacing: "1px" }}>CONFIDENCE</div>
+
+                      {/* Key levels grid */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
+                        {[
+                          { label: "Entry", value: entryMatch?.[1] ? "$" + entryMatch[1] : "—", color: "#e8e8f0" },
+                          { label: "Target", value: targetMatch?.[1] ? "$" + targetMatch[1] : "—", color: "#00e5a0" },
+                          { label: "Stop Loss", value: stopMatch?.[1] ? "$" + stopMatch[1] : "—", color: "#ff4d72" },
+                          { label: "Risk", value: riskMatch?.[1] || "—", color: riskMatch?.[1] === "Low" ? "#00e5a0" : riskMatch?.[1] === "High" ? "#ff4d72" : "#f0c040" },
+                        ].map((item) => (
+                          <div key={item.label} style={{
+                            background: "rgba(0,0,0,0.3)",
+                            borderRadius: "8px", padding: "10px 12px", textAlign: "center"
+                          }}>
+                            <div style={{ fontSize: "10px", color: "#444", marginBottom: "4px", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: "1px" }}>{item.label}</div>
+                            <div style={{ fontSize: "14px", fontWeight: "700", color: item.color, fontFamily: "'JetBrains Mono', monospace" }}>{item.value}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
-                    {/* BULLISH & BEARISH side by side */}
+                    {/* BULLISH & BEARISH */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-
-                      {/* Bullish Factors */}
                       <div style={{
                         background: "rgba(0,229,160,0.04)",
                         border: "1px solid rgba(0,229,160,0.15)",
                         borderRadius: "10px", padding: "14px"
                       }}>
-                        <div style={{
-                          fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
-                          color: "#00e5a0", textTransform: "uppercase",
-                          letterSpacing: "1px", marginBottom: "10px", fontWeight: "700"
-                        }}>📈 Bullish Factors</div>
-                        {bullishFactors.length > 0 ? bullishFactors.map((f, i) => (
-                          <div key={i} style={{
-                            display: "flex", alignItems: "flex-start", gap: "8px",
-                            marginBottom: "6px", fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5"
-                          }}>
-                            <span style={{ color: "#00e5a0", fontWeight: "700", marginTop: "1px" }}>✓</span>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", fontWeight: "700" }}>📈 Bullish Factors</div>
+                        {bullishFactors.map((f, i) => (
+                          <div key={i} style={{ display: "flex", gap: "8px", marginBottom: "6px", fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5" }}>
+                            <span style={{ color: "#00e5a0", fontWeight: "700" }}>✓</span>
                             <span>{f}</span>
                           </div>
-                        )) : (
-                          <div style={{ fontSize: "12px", color: "#333" }}>No bullish factors</div>
-                        )}
+                        ))}
                       </div>
-
-                      {/* Bearish Risks */}
                       <div style={{
                         background: "rgba(255,77,114,0.04)",
                         border: "1px solid rgba(255,77,114,0.15)",
                         borderRadius: "10px", padding: "14px"
                       }}>
-                        <div style={{
-                          fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
-                          color: "#ff4d72", textTransform: "uppercase",
-                          letterSpacing: "1px", marginBottom: "10px", fontWeight: "700"
-                        }}>📉 Bearish Risks</div>
-                        {bearishRisks.length > 0 ? bearishRisks.map((r, i) => (
-                          <div key={i} style={{
-                            display: "flex", alignItems: "flex-start", gap: "8px",
-                            marginBottom: "6px", fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5"
-                          }}>
-                            <span style={{ color: "#ff4d72", fontWeight: "700", marginTop: "1px" }}>⚠</span>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#ff4d72", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", fontWeight: "700" }}>📉 Bearish Risks</div>
+                        {bearishRisks.map((r, i) => (
+                          <div key={i} style={{ display: "flex", gap: "8px", marginBottom: "6px", fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5" }}>
+                            <span style={{ color: "#ff4d72", fontWeight: "700" }}>⚠</span>
                             <span>{r}</span>
                           </div>
-                        )) : (
-                          <div style={{ fontSize: "12px", color: "#333" }}>No bearish risks</div>
-                        )}
+                        ))}
                       </div>
                     </div>
 
-                    {/* SCORES */}
-                    <div style={{
-                      background: "#0a0a0f", border: "1px solid #1e1e30",
-                      borderRadius: "10px", padding: "14px"
-                    }}>
-                      <div style={{
-                        fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
-                        color: "#555", textTransform: "uppercase",
-                        letterSpacing: "1px", marginBottom: "12px", fontWeight: "600"
-                      }}>📊 Confidence Breakdown</div>
-
-                      {scores.map((s) => {
-                        const scoreColor = s.value >= 70 ? "#00e5a0" : s.value >= 50 ? "#f0c040" : "#ff4d72";
-                        return (
-                          <div key={s.label} style={{ marginBottom: "10px" }}>
-                            <div style={{
-                              display: "flex", justifyContent: "space-between", marginBottom: "4px"
-                            }}>
-                              <span style={{
-                                fontSize: "11px", color: "#888",
-                                fontFamily: "'JetBrains Mono', monospace"
-                              }}>{s.label}</span>
-                              <span style={{
-                                fontSize: "12px", fontWeight: "700",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                color: scoreColor
-                              }}>{s.value}/100</span>
-                            </div>
-                            <div style={{
-                              height: "5px", background: "rgba(255,255,255,0.05)",
-                              borderRadius: "3px", overflow: "hidden"
-                            }}>
-                              <div style={{
-                                height: "100%", width: s.value + "%",
-                                background: scoreColor,
-                                borderRadius: "3px", transition: "width 0.6s ease",
-                                boxShadow: "0 0 6px " + scoreColor + "88"
-                              }} />
-                            </div>
+                    {/* CONFIDENCE BREAKDOWN */}
+                    <div style={{ background: "#0a0a0f", border: "1px solid #1e1e30", borderRadius: "10px", padding: "14px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px", fontWeight: "600" }}>📊 Confidence Breakdown</div>
+                      {scores.map((s) => (
+                        <div key={s.label} style={{ marginBottom: "10px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                            <span style={{ fontSize: "11px", color: "#888", fontFamily: "'JetBrains Mono', monospace" }}>{s.label}</span>
+                            <span style={{ fontSize: "12px", fontWeight: "700", fontFamily: "'JetBrains Mono', monospace", color: scoreColor(s.value) }}>{s.value}/100</span>
                           </div>
-                        );
-                      })}
+                          <div style={{ height: "5px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", overflow: "hidden" }}>
+                            <div style={{
+                              height: "100%", width: s.value + "%",
+                              background: scoreColor(s.value),
+                              borderRadius: "3px", transition: "width 0.6s ease",
+                              boxShadow: "0 0 6px " + scoreColor(s.value) + "88"
+                            }} />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    
-                    {/* VOTES */}
-                    <div style={{
-                      background: "#0a0a0f", border: "1px solid #1e1e30",
-                      borderRadius: "10px", padding: "14px"
-                    }}>
-                      {/* WHY NOT 100% */}
-                    {(() => {
-                      const whySection = consensus.match(/WHY_NOT_100:([\s\S]*?)$/i);
-                      const reasons = whySection?.[1]?.match(/- (.+)/g)?.map(r => r.replace("- ", "").trim()) || [];
-                      const confidence = parseInt(consensus.match(/CONFIDENCE:\s*(\d+)/i)?.[1] || 0);
-                      const remaining = 100 - confidence;
 
-                      return reasons.length > 0 ? (
-                        <div style={{
-                          background: "rgba(240,192,64,0.04)",
-                          border: "1px solid rgba(240,192,64,0.15)",
-                          borderRadius: "10px", padding: "14px"
-                        }}>
-                          <div style={{
-                            fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
-                            color: "#f0c040", textTransform: "uppercase",
-                            letterSpacing: "1px", marginBottom: "4px", fontWeight: "700"
-                          }}>❓ Why Not 100%?</div>
-
-                          <div style={{
-                            fontSize: "11px", color: "#555",
-                            fontFamily: "'JetBrains Mono', monospace",
-                            marginBottom: "10px"
+                    {/* AGENT VOTES WITH REASONS */}
+                    <div style={{ background: "#0a0a0f", border: "1px solid #1e1e30", borderRadius: "10px", padding: "14px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px", fontWeight: "600" }}>🗳️ Agent Votes</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
+                        {agentVotes.map((agent) => (
+                          <div key={agent.name} style={{
+                            display: "flex", alignItems: "center", gap: "12px",
+                            padding: "10px 12px",
+                            background: "rgba(255,255,255,0.02)",
+                            borderLeft: "3px solid " + voteColor(agent.vote),
+                            borderRadius: "6px"
                           }}>
-                            Confidence: {confidence}% — Missing {remaining}% due to:
+                            <span style={{ fontSize: "12px", color: "#888", minWidth: "110px" }}>{agent.name}</span>
+                            <span style={{
+                              fontSize: "12px", fontWeight: "700",
+                              fontFamily: "'JetBrains Mono', monospace",
+                              color: voteColor(agent.vote), minWidth: "40px"
+                            }}>{agent.vote}</span>
+                            {agent.reason && (
+                              <span style={{ fontSize: "11px", color: "#555", lineHeight: "1.4" }}>
+                                {agent.reason}
+                              </span>
+                            )}
                           </div>
+                        ))}
+                      </div>
 
-                          {reasons.map((r, i) => (
-                            <div key={i} style={{
-                              display: "flex", alignItems: "flex-start",
-                              gap: "8px", marginBottom: "6px",
-                              fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5"
+                      {/* Agreement Score */}
+                      <div style={{
+                        borderTop: "1px solid #1e1e30", paddingTop: "12px"
+                      }}>
+                        <div style={{
+                          display: "flex", justifyContent: "space-between",
+                          alignItems: "center", marginBottom: "10px"
+                        }}>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px" }}>
+                            Committee Agreement
+                          </div>
+                          <div style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: "20px", fontWeight: "700",
+                            color: agreementScore >= 80 ? "#00e5a0" : agreementScore >= 60 ? "#f0c040" : "#ff4d72"
+                          }}>{agreementScore}%</div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          {[
+                            { label: "BUY", count: buyVotes, color: "#00e5a0" },
+                            { label: "SELL", count: sellVotes, color: "#ff4d72" },
+                            { label: "HOLD", count: holdVotes, color: "#f0c040" },
+                          ].map((v) => (
+                            <div key={v.label} style={{
+                              flex: 1, textAlign: "center", padding: "8px",
+                              background: v.count > 0 ? v.color + "11" : "transparent",
+                              border: "1px solid " + (v.count > 0 ? v.color + "33" : "#1e1e30"),
+                              borderRadius: "6px"
                             }}>
-                              <span style={{
-                                color: "#f0c040", fontWeight: "700", marginTop: "1px"
-                              }}>•</span>
-                              <span>{r}</span>
+                              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: v.color }}>{v.count}</div>
+                              <div style={{ fontSize: "10px", color: "#444", letterSpacing: "1px" }}>{v.label}</div>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    </div>
 
-                          {/* Visual missing confidence bar */}
-                          <div style={{ marginTop: "12px" }}>
-                            <div style={{
-                              display: "flex", justifyContent: "space-between",
-                              marginBottom: "4px"
-                            }}>
-                              <span style={{
-                                fontSize: "10px", color: "#555",
-                                fontFamily: "'JetBrains Mono', monospace"
-                              }}>Achieved</span>
-                              <span style={{
-                                fontSize: "10px", color: "#555",
-                                fontFamily: "'JetBrains Mono', monospace"
-                              }}>Missing</span>
-                            </div>
-                            <div style={{
-                              height: "6px", background: "rgba(255,255,255,0.05)",
-                              borderRadius: "3px", overflow: "hidden",
-                              display: "flex"
-                            }}>
-                              <div style={{
-                                height: "100%", width: confidence + "%",
-                                background: confidence >= 70 ? "#00e5a0" : confidence >= 50 ? "#f0c040" : "#ff4d72",
-                                borderRadius: "3px 0 0 3px",
-                                transition: "width 0.6s ease"
-                              }} />
-                              <div style={{
-                                height: "100%", width: remaining + "%",
-                                background: "rgba(240,192,64,0.2)",
-                                borderRadius: "0 3px 3px 0"
-                              }} />
-                            </div>
-                            <div style={{
-                              display: "flex", justifyContent: "space-between",
-                              marginTop: "4px"
-                            }}>
-                              <span style={{
-                                fontSize: "11px", fontWeight: "700",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                color: confidence >= 70 ? "#00e5a0" : "#f0c040"
-                              }}>{confidence}%</span>
-                              <span style={{
-                                fontSize: "11px", fontWeight: "700",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                color: "#f0c04088"
-                              }}>-{remaining}%</span>
-                            </div>
+                    {/* WHY NOT 100% */}
+                    {reasons.length > 0 && (
+                      <div style={{
+                        background: "rgba(240,192,64,0.04)",
+                        border: "1px solid rgba(240,192,64,0.15)",
+                        borderRadius: "10px", padding: "14px"
+                      }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#f0c040", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "4px", fontWeight: "700" }}>❓ Why Not 100%?</div>
+                        <div style={{ fontSize: "11px", color: "#555", fontFamily: "'JetBrains Mono', monospace", marginBottom: "10px" }}>
+                          Confidence: {confidence}% — Missing {remaining}% due to:
+                        </div>
+                        {reasons.map((r, i) => (
+                          <div key={i} style={{ display: "flex", gap: "8px", marginBottom: "6px", fontSize: "12px", color: "#c0c0d0", lineHeight: "1.5" }}>
+                            <span style={{ color: "#f0c040", fontWeight: "700" }}>•</span>
+                            <span>{r}</span>
+                          </div>
+                        ))}
+                        <div style={{ marginTop: "12px" }}>
+                          <div style={{ height: "6px", background: "rgba(255,255,255,0.05)", borderRadius: "3px", overflow: "hidden", display: "flex" }}>
+                            <div style={{ height: "100%", width: confidence + "%", background: confidence >= 70 ? "#00e5a0" : "#f0c040", borderRadius: "3px 0 0 3px" }} />
+                            <div style={{ height: "100%", width: remaining + "%", background: "rgba(240,192,64,0.2)", borderRadius: "0 3px 3px 0" }} />
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
+                            <span style={{ fontSize: "11px", fontWeight: "700", fontFamily: "'JetBrains Mono', monospace", color: confidence >= 70 ? "#00e5a0" : "#f0c040" }}>{confidence}%</span>
+                            <span style={{ fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", color: "#f0c04088" }}>-{remaining}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* HISTORICAL PERFORMANCE */}
+                    {(() => {
+                      const completed = predictions.filter(p => p.result !== "pending" && p.coin === selected.symbol);
+                      const wins = completed.filter(p => p.result === "win").length;
+                      const losses = completed.filter(p => p.result === "loss").length;
+                      const winRate = completed.length > 0 ? ((wins / completed.length) * 100).toFixed(1) : null;
+
+                      return completed.length > 0 ? (
+                        <div style={{
+                          background: "rgba(167,139,250,0.04)",
+                          border: "1px solid rgba(167,139,250,0.15)",
+                          borderRadius: "10px", padding: "14px"
+                        }}>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px", fontWeight: "700" }}>📈 AI Performance — {selected.symbol}</div>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+                            {[
+                              { label: "Accuracy", value: winRate + "%", color: parseFloat(winRate) >= 70 ? "#00e5a0" : parseFloat(winRate) >= 50 ? "#f0c040" : "#ff4d72" },
+                              { label: "Wins", value: wins, color: "#00e5a0" },
+                              { label: "Losses", value: losses, color: "#ff4d72" },
+                            ].map((s) => (
+                              <div key={s.label} style={{ textAlign: "center", padding: "10px", background: "rgba(0,0,0,0.2)", borderRadius: "8px" }}>
+                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "22px", fontWeight: "700", color: s.color }}>{s.value}</div>
+                                <div style={{ fontSize: "10px", color: "#444", marginTop: "4px", letterSpacing: "1px" }}>{s.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: "10px", fontSize: "11px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>
+                            Based on {completed.length} completed predictions for {selected.symbol}
                           </div>
                         </div>
                       ) : null;
                     })()}
-                      <div style={{
-                        fontFamily: "'JetBrains Mono', monospace", fontSize: "10px",
-                        color: "#555", textTransform: "uppercase",
-                        letterSpacing: "1px", marginBottom: "12px", fontWeight: "600"
-                      }}>🗳️ Agent Votes</div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "12px" }}>
-                        {[
-                          { name: "🟢 Bull Trader", vote: bullVote },
-                          { name: "🔴 Bear Trader", vote: bearVote },
-                          { name: "📊 Technical", vote: techVote },
-                          { name: "💭 Sentiment", vote: sentVote },
-                          { name: "🛡️ Risk Manager", vote: riskVote },
-                        ].map((agent) => (
-                          <div key={agent.name} style={{
-                            display: "flex", justifyContent: "space-between",
-                            alignItems: "center", padding: "8px 12px",
-                            background: "rgba(255,255,255,0.02)",
-                            borderRadius: "6px",
-                            border: "1px solid rgba(255,255,255,0.04)"
-                          }}>
-                            <span style={{ fontSize: "11px", color: "#666" }}>{agent.name}</span>
-                            <span style={{
-                              fontSize: "11px", fontWeight: "700",
-                              fontFamily: "'JetBrains Mono', monospace",
-                              color: voteColor(agent.vote)
-                            }}>{agent.vote}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Vote Summary */}
-                      <div style={{
-                        display: "flex", gap: "10px",
-                        borderTop: "1px solid #1e1e30", paddingTop: "10px"
-                      }}>
-                        {[
-                          { label: "BUY", count: buyVotes, color: "#00e5a0" },
-                          { label: "SELL", count: sellVotes, color: "#ff4d72" },
-                          { label: "HOLD", count: holdVotes, color: "#f0c040" },
-                        ].map((v) => (
-                          <div key={v.label} style={{
-                            flex: 1, textAlign: "center", padding: "8px",
-                            background: v.count > 0 ? v.color + "11" : "transparent",
-                            border: "1px solid " + (v.count > 0 ? v.color + "33" : "#1e1e30"),
-                            borderRadius: "6px"
-                          }}>
-                            <div style={{
-                              fontFamily: "'JetBrains Mono', monospace",
-                              fontSize: "18px", fontWeight: "700", color: v.color
-                            }}>{v.count}</div>
-                            <div style={{ fontSize: "10px", color: "#444", letterSpacing: "1px" }}>{v.label}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
 
                   </div>
                 );
