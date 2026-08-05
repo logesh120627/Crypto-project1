@@ -449,8 +449,9 @@ const STYLES = `
   }
 `;
 
-function MiniChart({ prices, positive }) {
+function MiniChart({ prices, positive, supports, resistances, currentPrice }) {
   const canvasRef = useRef(null);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !prices || prices.length < 2) return;
@@ -459,17 +460,27 @@ function MiniChart({ prices, positive }) {
     const H = canvas.offsetHeight * 2;
     canvas.width = W;
     canvas.height = H;
+
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const range = max - min || 1;
+
     ctx.clearRect(0, 0, W, H);
+
+    // Price to Y coordinate helper
+    const priceToY = (price) => H - ((price - min) / range) * (H - 20) - 10;
+
+    // Gradient fill
     const gradient = ctx.createLinearGradient(0, 0, 0, H);
     gradient.addColorStop(0, positive ? "#00e5a022" : "#ff4d7222");
     gradient.addColorStop(1, "transparent");
+
     const pts = prices.map((p, i) => ({
       x: (i / (prices.length - 1)) * W,
-      y: H - ((p - min) / range) * (H - 10) - 5,
+      y: priceToY(p),
     }));
+
+    // Draw fill
     ctx.beginPath();
     ctx.moveTo(pts[0].x, H);
     pts.forEach((pt) => ctx.lineTo(pt.x, pt.y));
@@ -477,14 +488,94 @@ function MiniChart({ prices, positive }) {
     ctx.closePath();
     ctx.fillStyle = gradient;
     ctx.fill();
+
+    // Draw price line
     ctx.beginPath();
     pts.forEach((pt, i) => (i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
     ctx.strokeStyle = positive ? "#00e5a0" : "#ff4d72";
     ctx.lineWidth = 2.5;
     ctx.lineJoin = "round";
     ctx.stroke();
-  }, [prices, positive]);
-  return <canvas ref={canvasRef} style={{ width: "100%", height: "80px", display: "block" }} />;
+
+    // Draw resistance lines (red dashed)
+    if (resistances && resistances.length > 0) {
+      resistances.forEach((level, i) => {
+        if (level < min || level > max) return;
+        const y = priceToY(level);
+        ctx.beginPath();
+        ctx.setLineDash([8, 4]);
+        ctx.strokeStyle = "#ff4d72";
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.7 - i * 0.1;
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+
+        // Label
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#ff4d72";
+        ctx.font = `bold ${22}px JetBrains Mono, monospace`;
+        ctx.fillText(`R${i + 1} $${level.toLocaleString()}`, 8, y - 6);
+      });
+    }
+
+    // Draw support lines (green dashed)
+    if (supports && supports.length > 0) {
+      supports.forEach((level, i) => {
+        if (level < min || level > max) return;
+        const y = priceToY(level);
+        ctx.beginPath();
+        ctx.setLineDash([8, 4]);
+        ctx.strokeStyle = "#00e5a0";
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.7 - i * 0.1;
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+
+        // Label
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#00e5a0";
+        ctx.font = `bold ${22}px JetBrains Mono, monospace`;
+        ctx.fillText(`S${i + 1} $${level.toLocaleString()}`, 8, y + 18);
+      });
+    }
+
+    // Draw current price line (white dotted)
+    if (currentPrice && currentPrice >= min && currentPrice <= max) {
+      const y = priceToY(currentPrice);
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = 0.4;
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+
+      // Current price label on right
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${22}px JetBrains Mono, monospace`;
+      ctx.textAlign = "right";
+      ctx.fillText(`$${currentPrice?.toLocaleString()}`, W - 8, y - 6);
+      ctx.textAlign = "left";
+    }
+
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+
+  }, [prices, positive, supports, resistances, currentPrice]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ width: "100%", height: "140px", display: "block" }}
+    />
+  );
 }
 const AGENTS = [
   {
@@ -568,11 +659,22 @@ export default function App() {
   const [debateStarted, setDebateStarted] = useState(false);
   const [consensus, setConsensus] = useState(null);
   const [timeframe, setTimeframe] = useState("1h");
+  const [klineData, setKlineData] = useState([]);
   const [predictions, setPredictions] = useState([]);
+  const [journal, setJournal] = useState([]);
+  const [showJournal, setShowJournal] = useState(false);
+  const [journalEntry, setJournalEntry] = useState({
+      coin: "", entry: "", exit: "", type: "LONG",
+      reason: "", result: "", notes: ""
+    });
+  const [aiMemory, setAiMemory] = useState([]);
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("cryptomind_predictions") || "[]");
     setPredictions(saved);
+    const savedJournal = JSON.parse(localStorage.getItem("cryptomind_journal") || "[]");
+    setJournal(savedJournal);
+    loadAiMemory();
   }, []);
   // Auto refresh price every 10 seconds
   useEffect(() => {
@@ -628,8 +730,8 @@ export default function App() {
   useEffect(() => {
     const coin = marketData[selected.id];
     if (coin?.sparkline_in_7d?.price) setPrices(coin.sparkline_in_7d.price);
+    fetchKlines(selected.binance, timeframe);
   }, [selected, marketData]);
-
   const coin = marketData[selected.id];
   const change24h = coin?.price_change_percentage_24h ?? 0;
   const isUp = change24h >= 0;
@@ -670,6 +772,28 @@ export default function App() {
       setError("Failed to reach AI. Check your connection.");
     }
     setAiLoading(false);
+  }
+  async function fetchKlines(symbol, interval) {
+    try {
+      const intervalMap = {
+        "15m": "15m",
+        "1h": "1h",
+        "4h": "4h",
+        "1D": "1d",
+        "1W": "1w"
+      };
+      const binanceInterval = intervalMap[interval] || "1h";
+      const res = await fetch(
+        `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${binanceInterval}&limit=100`
+      );
+      const data = await res.json();
+      // Extract close prices
+      const closePrices = data.map((k) => parseFloat(k[4]));
+      setKlineData(closePrices);
+      setPrices(closePrices);
+    } catch (e) {
+      console.error("Kline fetch error:", e);
+    }
   }
   async function runAgentDebate() {
     if (!coin) return;
@@ -743,7 +867,9 @@ export default function App() {
             },
             {
               role: "user",
-              content: `Based on these expert opinions about ${selected.name} for ${timeframe} timeframe, give a final trading verdict:
+              content: `Based on these expert opinions about ${selected.name} for ${timeframe} timeframe, give a final trading verdict.${buildMemoryContext()}
+
+Based on these expert opinions:
 
 Bull: ${bullish.slice(0, 200)}
 Bear: ${bearish.slice(0, 200)}
@@ -776,11 +902,11 @@ VOLUME: [0-100]
 SUPPORT_ZONE: [0-100]
 WHALE_ACTIVITY: [0-100]
 VOTES:
-BULL_TRADER: [BUY/SELL/HOLD] | [one sentence reason]
-BEAR_TRADER: [BUY/SELL/HOLD] | [one sentence reason]
-TECHNICAL_ANALYST: [BUY/SELL/HOLD] | [one sentence reason]
-SENTIMENT_ANALYST: [BUY/SELL/HOLD] | [one sentence reason]
-RISK_MANAGER: [BUY/SELL/HOLD] | [one sentence reason]
+BULL_TRADER: [BUY/SELL/HOLD] | [0-100]% | [one sentence reason]
+BEAR_TRADER: [BUY/SELL/HOLD] | [0-100]% | [one sentence reason]
+TECHNICAL_ANALYST: [BUY/SELL/HOLD] | [0-100]% | [one sentence reason]
+SENTIMENT_ANALYST: [BUY/SELL/HOLD] | [0-100]% | [one sentence reason]
+RISK_MANAGER: [BUY/SELL/HOLD] | [0-100]% | [one sentence reason]
 WHY_NOT_100:
 - [reason 1]
 - [reason 2]
@@ -790,7 +916,24 @@ WHY_NOT_100:
         }),
       });
       const consensusData = await consensusRes.json();
-      setConsensus(consensusData.choices?.[0]?.message?.content || "");
+      const consensusText = consensusData.choices?.[0]?.message?.content || "";
+      setConsensus(consensusText);
+
+      // Auto save to AI memory
+      const sigMatch = consensusText.match(/SIGNAL:\s*(BUY|SELL|HOLD)/i);
+      const entMatch = consensusText.match(/ENTRY:\s*\$?([\d,]+\.?\d*)/i);
+      const tgtMatch = consensusText.match(/TARGET:\s*\$?([\d,]+\.?\d*)/i);
+      const stpMatch = consensusText.match(/STOP:\s*\$?([\d,]+\.?\d*)/i);
+      const confMatch = consensusText.match(/CONFIDENCE:\s*(\d+)/i);
+      if (sigMatch) {
+        saveAiMemory(
+          sigMatch[1],
+          entMatch?.[1]?.replace(/,/g, "") || coin?.current_price,
+          tgtMatch?.[1]?.replace(/,/g, "") || "",
+          stpMatch?.[1]?.replace(/,/g, "") || "",
+          confMatch?.[1] || 0
+        );
+      }
     } catch (e) {
       setConsensus("Failed to generate consensus.");
     }
@@ -918,6 +1061,105 @@ WHY_NOT_100:
   }
 
 const srLevels = getSupportResistance();
+function loadAiMemory() {
+    const saved = JSON.parse(localStorage.getItem("cryptomind_memory") || "[]");
+    setAiMemory(saved);
+    return saved;
+  }
+
+  function saveAiMemory(signal, entry, target, stop, confidence) {
+    const memory = {
+      id: Date.now(),
+      coin: selected.symbol,
+      signal,
+      entry,
+      target,
+      stop,
+      confidence,
+      priceAtTime: coin?.current_price,
+      timestamp: new Date().toISOString(),
+      result: "pending"
+    };
+    const existing = JSON.parse(localStorage.getItem("cryptomind_memory") || "[]");
+    existing.unshift(memory);
+    const updated = existing.slice(0, 10); // keep last 10
+    localStorage.setItem("cryptomind_memory", JSON.stringify(updated));
+    setAiMemory(updated);
+    return updated;
+  }
+
+  function buildMemoryContext() {
+    const memory = JSON.parse(localStorage.getItem("cryptomind_memory") || "[]");
+    const coinMemory = memory.filter(m => m.coin === selected.symbol).slice(0, 3);
+    if (coinMemory.length === 0) return "";
+
+    return `\n\nPREVIOUS PREDICTIONS FOR ${selected.symbol}:\n` +
+      coinMemory.map((m, i) => {
+        const currentPrice = coin?.current_price || 0;
+        const priceChange = m.priceAtTime ? (((currentPrice - m.priceAtTime) / m.priceAtTime) * 100).toFixed(2) : "unknown";
+        const predictionSuccess = m.signal === "BUY"
+          ? currentPrice > m.priceAtTime ? "✅ Correct direction" : "❌ Wrong direction"
+          : m.signal === "SELL"
+          ? currentPrice < m.priceAtTime ? "✅ Correct direction" : "❌ Wrong direction"
+          : "HOLD — neutral";
+        return `Prediction ${i + 1}: ${m.signal} @ $${m.priceAtTime?.toLocaleString()} (${new Date(m.timestamp).toLocaleDateString()}) — Price now: $${currentPrice?.toLocaleString()} (${priceChange}%) — ${predictionSuccess}`;
+      }).join("\n");
+  }
+function loadJournal() {
+    const saved = JSON.parse(localStorage.getItem("cryptomind_journal") || "[]");
+    setJournal(saved);
+  }
+
+  function saveJournalEntry() {
+    if (!journalEntry.entry || !journalEntry.exit) {
+      alert("Please fill Entry and Exit price!");
+      return;
+    }
+    const entry = parseFloat(journalEntry.entry);
+    const exit = parseFloat(journalEntry.exit);
+    const pnl = journalEntry.type === "LONG"
+      ? ((exit - entry) / entry * 100).toFixed(2)
+      : ((entry - exit) / entry * 100).toFixed(2);
+    const isWin = parseFloat(pnl) > 0;
+
+    const newEntry = {
+      id: Date.now(),
+      coin: journalEntry.coin || selected.symbol,
+      entry: entry,
+      exit: exit,
+      type: journalEntry.type,
+      reason: journalEntry.reason,
+      result: isWin ? "win" : "loss",
+      pnl: pnl,
+      notes: journalEntry.notes,
+      timestamp: new Date().toISOString(),
+    };
+
+    const existing = JSON.parse(localStorage.getItem("cryptomind_journal") || "[]");
+    existing.unshift(newEntry);
+    localStorage.setItem("cryptomind_journal", JSON.stringify(existing.slice(0, 50)));
+    setJournal(existing.slice(0, 50));
+    setJournalEntry({ coin: "", entry: "", exit: "", type: "LONG", reason: "", result: "", notes: "" });
+    alert("Trade saved to journal!");
+  }
+
+  function deleteJournalEntry(id) {
+    const existing = JSON.parse(localStorage.getItem("cryptomind_journal") || "[]");
+    const updated = existing.filter(e => e.id !== id);
+    localStorage.setItem("cryptomind_journal", JSON.stringify(updated));
+    setJournal(updated);
+  }
+
+  function getJournalStats() {
+    const wins = journal.filter(j => j.result === "win");
+    const losses = journal.filter(j => j.result === "loss");
+    const winRate = journal.length > 0 ? ((wins.length / journal.length) * 100).toFixed(1) : 0;
+    const avgWin = wins.length > 0 ? (wins.reduce((a, b) => a + parseFloat(b.pnl), 0) / wins.length).toFixed(2) : 0;
+    const avgLoss = losses.length > 0 ? (losses.reduce((a, b) => a + parseFloat(b.pnl), 0) / losses.length).toFixed(2) : 0;
+    const bestTrade = journal.length > 0 ? Math.max(...journal.map(j => parseFloat(j.pnl))).toFixed(2) : 0;
+    const worstTrade = journal.length > 0 ? Math.min(...journal.map(j => parseFloat(j.pnl))).toFixed(2) : 0;
+    return { wins: wins.length, losses: losses.length, winRate, avgWin, avgLoss, bestTrade, worstTrade };
+  }
 function savePrediction() {
     if (!consensus || !coin) return;
     const signalMatch = consensus.match(/SIGNAL:\s*(BUY|SELL|HOLD)/i);
@@ -1067,9 +1309,15 @@ function savePrediction() {
 
         {/* Chart */}
         <div className="chart-wrapper">
-          <div className="chart-title">7-day price · {selected.symbol}/USD</div>
+          <div className="chart-title">{timeframe} chart · {selected.symbol}/USDT · Binance</div>
           {prices.length > 0 ? (
-            <MiniChart prices={prices} positive={isUp} />
+            <MiniChart
+              prices={prices}
+              positive={isUp}
+              supports={srLevels.supports}
+              resistances={srLevels.resistances}
+              currentPrice={coin?.current_price}
+            />
           ) : (
             <div style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", color: "#333", fontSize: 13 }}>
               Loading chart…
@@ -1271,7 +1519,10 @@ function savePrediction() {
             {["15m", "1h", "4h", "1D", "1W"].map((tf) => (
               <button
                 key={tf}
-                onClick={() => setTimeframe(tf)}
+                onClick={() => {
+                  setTimeframe(tf);
+                  fetchKlines(selected.binance, tf);
+                }}
                 style={{
                   background: timeframe === tf ? "rgba(0,229,160,0.1)" : "rgba(255,255,255,0.03)",
                   border: timeframe === tf ? "1px solid #00e5a0" : "1px solid rgba(255,255,255,0.08)",
@@ -1422,13 +1673,14 @@ function savePrediction() {
                 // Votes with reasons
                 const parseVote = (pattern) => {
                   const match = consensus.match(pattern);
-                  if (!match) return { vote: "—", reason: "" };
+                  if (!match) return { vote: "—", agentConfidence: 0, reason: "" };
                   const parts = match[1].split("|");
                   return {
                     vote: parts[0]?.trim().toUpperCase() || "—",
-                    reason: parts[1]?.trim() || ""
+                    agentConfidence: parseInt(parts[1]?.replace("%","")?.trim() || 0),
+                    reason: parts[2]?.trim() || ""
                   };
-                };
+                };  
 
                 const agentVotes = [
                   { name: "🟢 Bull Trader", ...parseVote(/BULL_TRADER:\s*(.+)/i) },
@@ -1543,7 +1795,12 @@ function savePrediction() {
 
                     {/* CONFIDENCE BREAKDOWN */}
                     <div style={{ background: "#0a0a0f", border: "1px solid #1e1e30", borderRadius: "10px", padding: "14px" }}>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px", fontWeight: "600" }}>📊 Confidence Breakdown</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>📊 Confidence Breakdown</div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444" }}>
+                          Formula: Technical 35% · Sentiment 15% · Volume 15% · Support 15% · Whales 20%
+                        </div>
+                      </div>
                       {scores.map((s) => (
                         <div key={s.label} style={{ marginBottom: "10px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
@@ -1568,22 +1825,43 @@ function savePrediction() {
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
                         {agentVotes.map((agent) => (
                           <div key={agent.name} style={{
-                            display: "flex", alignItems: "center", gap: "12px",
                             padding: "10px 12px",
                             background: "rgba(255,255,255,0.02)",
                             borderLeft: "3px solid " + voteColor(agent.vote),
                             borderRadius: "6px"
                           }}>
-                            <span style={{ fontSize: "12px", color: "#888", minWidth: "110px" }}>{agent.name}</span>
-                            <span style={{
-                              fontSize: "12px", fontWeight: "700",
-                              fontFamily: "'JetBrains Mono', monospace",
-                              color: voteColor(agent.vote), minWidth: "40px"
-                            }}>{agent.vote}</span>
+                            {/* Top row - name, vote, confidence */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: agent.reason ? "6px" : "0" }}>
+                              <span style={{ fontSize: "12px", color: "#888", minWidth: "110px" }}>{agent.name}</span>
+                              <span style={{
+                                fontSize: "12px", fontWeight: "700",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                color: voteColor(agent.vote), minWidth: "44px"
+                              }}>{agent.vote}</span>
+                              {/* Confidence bar */}
+                              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px" }}>
+                                <div style={{ flex: 1, height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", overflow: "hidden" }}>
+                                  <div style={{
+                                    height: "100%",
+                                    width: agent.agentConfidence + "%",
+                                    background: voteColor(agent.vote),
+                                    borderRadius: "2px",
+                                    transition: "width 0.6s ease"
+                                  }} />
+                                </div>
+                                <span style={{
+                                  fontFamily: "'JetBrains Mono', monospace",
+                                  fontSize: "11px", fontWeight: "700",
+                                  color: voteColor(agent.vote),
+                                  minWidth: "36px", textAlign: "right"
+                                }}>{agent.agentConfidence}%</span>
+                              </div>
+                            </div>
+                            {/* Reason */}
                             {agent.reason && (
-                              <span style={{ fontSize: "11px", color: "#555", lineHeight: "1.4" }}>
+                              <div style={{ fontSize: "11px", color: "#444", lineHeight: "1.4", paddingLeft: "122px" }}>
                                 {agent.reason}
-                              </span>
+                              </div>
                             )}
                           </div>
                         ))}
@@ -1659,35 +1937,52 @@ function savePrediction() {
 
                     {/* HISTORICAL PERFORMANCE */}
                     {(() => {
-                      const completed = predictions.filter(p => p.result !== "pending" && p.coin === selected.symbol);
-                      const wins = completed.filter(p => p.result === "win").length;
-                      const losses = completed.filter(p => p.result === "loss").length;
-                      const winRate = completed.length > 0 ? ((wins / completed.length) * 100).toFixed(1) : null;
+                      const allPredictions = predictions.filter(p => p.result !== "pending");
+                      const coinPredictions = predictions.filter(p => p.result !== "pending" && p.coin === selected.symbol);
+                      const wins = coinPredictions.filter(p => p.result === "win").length;
+                      const losses = coinPredictions.filter(p => p.result === "loss").length;
+                      const winRate = coinPredictions.length > 0 ? ((wins / coinPredictions.length) * 100).toFixed(1) : null;
+                      const totalWinRate = allPredictions.length > 0
+                        ? ((allPredictions.filter(p => p.result === "win").length / allPredictions.length) * 100).toFixed(1)
+                        : null;
+                      const pending = predictions.filter(p => p.result === "pending").length;
 
-                      return completed.length > 0 ? (
+                      return (
                         <div style={{
                           background: "rgba(167,139,250,0.04)",
                           border: "1px solid rgba(167,139,250,0.15)",
                           borderRadius: "10px", padding: "14px"
                         }}>
-                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px", fontWeight: "700" }}>📈 AI Performance — {selected.symbol}</div>
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-                            {[
-                              { label: "Accuracy", value: winRate + "%", color: parseFloat(winRate) >= 70 ? "#00e5a0" : parseFloat(winRate) >= 50 ? "#f0c040" : "#ff4d72" },
-                              { label: "Wins", value: wins, color: "#00e5a0" },
-                              { label: "Losses", value: losses, color: "#ff4d72" },
-                            ].map((s) => (
-                              <div key={s.label} style={{ textAlign: "center", padding: "10px", background: "rgba(0,0,0,0.2)", borderRadius: "8px" }}>
-                                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "22px", fontWeight: "700", color: s.color }}>{s.value}</div>
-                                <div style={{ fontSize: "10px", color: "#444", marginTop: "4px", letterSpacing: "1px" }}>{s.label}</div>
+                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px", fontWeight: "700" }}>📈 AI Performance</div>
+
+                          {coinPredictions.length > 0 ? (
+                            <>
+                              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "10px" }}>
+                                {[
+                                  { label: "Accuracy", value: winRate + "%", color: parseFloat(winRate) >= 70 ? "#00e5a0" : parseFloat(winRate) >= 50 ? "#f0c040" : "#ff4d72" },
+                                  { label: "Wins", value: wins, color: "#00e5a0" },
+                                  { label: "Losses", value: losses, color: "#ff4d72" },
+                                  { label: "Pending", value: pending, color: "#f0c040" },
+                                ].map((s) => (
+                                  <div key={s.label} style={{ textAlign: "center", padding: "10px", background: "rgba(0,0,0,0.2)", borderRadius: "8px" }}>
+                                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: s.color }}>{s.value}</div>
+                                    <div style={{ fontSize: "10px", color: "#444", marginTop: "4px", letterSpacing: "1px" }}>{s.label}</div>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                          <div style={{ marginTop: "10px", fontSize: "11px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>
-                            Based on {completed.length} completed predictions for {selected.symbol}
-                          </div>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>
+                                <span>{selected.symbol} predictions: {coinPredictions.length}</span>
+                                {totalWinRate && <span>Overall accuracy: {totalWinRate}%</span>}
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ textAlign: "center", padding: "20px", color: "#333", fontSize: "12px", fontFamily: "'JetBrains Mono', monospace" }}>
+                              No completed predictions yet for {selected.symbol}.
+                              Run a debate → Save Prediction → Mark Win/Loss to track performance.
+                            </div>
+                          )}
                         </div>
-                      ) : null;
+                      );
                     })()}
 
                   </div>
@@ -1861,6 +2156,372 @@ function savePrediction() {
               color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px"
             }}>
               Run a debate and click "Save Prediction" to start tracking accuracy
+            </div>
+          )}
+        </div>
+        {/* AI Committee Memory */}
+        <div style={{
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "14px", padding: "20px", marginTop: "20px"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+            <div style={{
+              fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", fontWeight: "700",
+              color: "#f0c040", background: "rgba(240,192,64,0.1)",
+              border: "1px solid rgba(240,192,64,0.3)",
+              padding: "3px 8px", borderRadius: "6px", letterSpacing: "1.5px"
+            }}>MEMORY</div>
+            <div style={{ fontSize: "14px", fontWeight: "600", color: "#e8e8f0" }}>AI Committee Memory</div>
+            <div style={{ marginLeft: "auto", fontSize: "11px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>
+              Auto-saves after each debate
+            </div>
+          </div>
+
+          {aiMemory.filter(m => m.coin === selected.symbol).length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {aiMemory.filter(m => m.coin === selected.symbol).map((memory, i) => {
+                const currentPrice = coin?.current_price || 0;
+                const priceChange = memory.priceAtTime
+                  ? (((currentPrice - memory.priceAtTime) / memory.priceAtTime) * 100).toFixed(2)
+                  : null;
+                const isCorrect = memory.signal === "BUY"
+                  ? currentPrice > memory.priceAtTime
+                  : memory.signal === "SELL"
+                  ? currentPrice < memory.priceAtTime
+                  : null;
+                const signalColor = memory.signal === "BUY" ? "#00e5a0" : memory.signal === "SELL" ? "#ff4d72" : "#f0c040";
+
+                return (
+                  <div key={memory.id} style={{
+                    background: "rgba(0,0,0,0.2)",
+                    border: "1px solid " + signalColor + "33",
+                    borderLeft: "3px solid " + signalColor,
+                    borderRadius: "8px", padding: "14px"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "14px", fontWeight: "700", color: signalColor }}>
+                          {memory.signal === "BUY" ? "🟢" : memory.signal === "SELL" ? "🔴" : "🟡"} {memory.signal}
+                        </span>
+                        <span style={{ fontSize: "11px", color: "#444" }}>
+                          {new Date(memory.timestamp).toLocaleDateString()} {new Date(memory.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      {isCorrect !== null && (
+                        <span style={{ fontSize: "12px", fontWeight: "600", color: isCorrect ? "#00e5a0" : "#ff4d72" }}>
+                          {isCorrect ? "✅ Correct" : "❌ Wrong"} direction
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "8px" }}>
+                      {[
+                        { label: "Price Then", value: "$" + memory.priceAtTime?.toLocaleString() },
+                        { label: "Price Now", value: "$" + currentPrice?.toLocaleString() },
+                        { label: "Change", value: priceChange ? (parseFloat(priceChange) > 0 ? "+" : "") + priceChange + "%" : "—" },
+                        { label: "Confidence", value: memory.confidence + "%" },
+                      ].map((item) => (
+                        <div key={item.label}>
+                          <div style={{ fontSize: "10px", color: "#444", marginBottom: "2px", fontFamily: "'JetBrains Mono', monospace" }}>{item.label}</div>
+                          <div style={{ fontSize: "12px", color: "#c0c0d0", fontFamily: "'JetBrains Mono', monospace", fontWeight: "600" }}>{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Progress bar showing price movement */}
+                    {priceChange && (
+                      <div>
+                        <div style={{ height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", overflow: "hidden" }}>
+                          <div style={{
+                            height: "100%",
+                            width: Math.min(Math.abs(parseFloat(priceChange)) * 5, 100) + "%",
+                            background: isCorrect ? "#00e5a0" : "#ff4d72",
+                            borderRadius: "2px"
+                          }} />
+                        </div>
+                        <div style={{ fontSize: "10px", color: "#333", marginTop: "4px", fontFamily: "'JetBrains Mono', monospace" }}>
+                          {isCorrect ? "✓ AI predicted correctly — price moved in the right direction" : "✗ AI was wrong — price moved opposite to prediction"}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{
+              textAlign: "center", padding: "30px",
+              color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px"
+            }}>
+              No memory yet for {selected.symbol}. Run a debate to create the first memory!
+            </div>
+          )}
+        </div>
+        {/* Trade Journal */}
+        <div style={{
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "14px", padding: "20px", marginTop: "20px"
+        }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", fontWeight: "700",
+                color: "#a78bfa", background: "rgba(167,139,250,0.1)",
+                border: "1px solid rgba(167,139,250,0.3)",
+                padding: "3px 8px", borderRadius: "6px", letterSpacing: "1.5px"
+              }}>JOURNAL</div>
+              <div style={{ fontSize: "14px", fontWeight: "600", color: "#e8e8f0" }}>Trade Journal</div>
+            </div>
+            <button
+              onClick={() => setShowJournal(!showJournal)}
+              style={{
+                background: showJournal ? "rgba(167,139,250,0.1)" : "rgba(255,255,255,0.03)",
+                border: "1px solid " + (showJournal ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.08)"),
+                borderRadius: "8px", padding: "6px 14px",
+                color: showJournal ? "#a78bfa" : "#555",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "12px", fontWeight: "600", cursor: "pointer"
+              }}
+            >
+              {showJournal ? "− Close" : "+ Add Trade"}
+            </button>
+          </div>
+
+          {/* Stats */}
+          {journal.length > 0 && (() => {
+            const stats = getJournalStats();
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "16px" }}>
+                {[
+                  { label: "Win Rate", value: stats.winRate + "%", color: parseFloat(stats.winRate) >= 60 ? "#00e5a0" : "#ff4d72" },
+                  { label: "Best Trade", value: "+" + stats.bestTrade + "%", color: "#00e5a0" },
+                  { label: "Worst Trade", value: stats.worstTrade + "%", color: "#ff4d72" },
+                  { label: "Total Trades", value: journal.length, color: "#a78bfa" },
+                ].map((s) => (
+                  <div key={s.label} style={{
+                    background: "rgba(0,0,0,0.2)", borderRadius: "8px",
+                    padding: "12px", textAlign: "center"
+                  }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "18px", fontWeight: "700", color: s.color }}>{s.value}</div>
+                    <div style={{ fontSize: "10px", color: "#444", marginTop: "4px", letterSpacing: "1px" }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Add Trade Form */}
+          {showJournal && (
+            <div style={{
+              background: "rgba(167,139,250,0.04)",
+              border: "1px solid rgba(167,139,250,0.15)",
+              borderRadius: "10px", padding: "16px", marginBottom: "16px"
+            }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px", fontWeight: "600" }}>📝 New Trade Entry</div>
+
+              {/* Row 1 */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                {/* Coin */}
+                <div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Coin</div>
+                  <select
+                    value={journalEntry.coin || selected.symbol}
+                    onChange={(e) => setJournalEntry({ ...journalEntry, coin: e.target.value })}
+                    style={{
+                      width: "100%", background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px",
+                      padding: "10px", color: "#e8e8f0",
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none"
+                    }}
+                  >
+                    {COINS.map(c => (
+                      <option key={c.symbol} value={c.symbol} style={{ background: "#0a0a0f" }}>{c.symbol}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Type */}
+                <div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Type</div>
+                  <select
+                    value={journalEntry.type}
+                    onChange={(e) => setJournalEntry({ ...journalEntry, type: e.target.value })}
+                    style={{
+                      width: "100%", background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px",
+                      padding: "10px", color: journalEntry.type === "LONG" ? "#00e5a0" : "#ff4d72",
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none"
+                    }}
+                  >
+                    <option value="LONG" style={{ background: "#0a0a0f", color: "#00e5a0" }}>LONG</option>
+                    <option value="SHORT" style={{ background: "#0a0a0f", color: "#ff4d72" }}>SHORT</option>
+                  </select>
+                </div>
+
+                {/* Entry */}
+                <div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Entry Price ($)</div>
+                  <input
+                    type="number"
+                    placeholder="63500"
+                    value={journalEntry.entry}
+                    onChange={(e) => setJournalEntry({ ...journalEntry, entry: e.target.value })}
+                    style={{
+                      width: "100%", background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px",
+                      padding: "10px", color: "#e8e8f0",
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none"
+                    }}
+                  />
+                </div>
+
+                {/* Exit */}
+                <div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Exit Price ($)</div>
+                  <input
+                    type="number"
+                    placeholder="65000"
+                    value={journalEntry.exit}
+                    onChange={(e) => setJournalEntry({ ...journalEntry, exit: e.target.value })}
+                    style={{
+                      width: "100%", background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px",
+                      padding: "10px", color: "#e8e8f0",
+                      fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none"
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2 */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                <div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Reason for Trade</div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Breakout above resistance, AI signal BUY"
+                    value={journalEntry.reason}
+                    onChange={(e) => setJournalEntry({ ...journalEntry, reason: e.target.value })}
+                    style={{
+                      width: "100%", background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px",
+                      padding: "10px", color: "#e8e8f0",
+                      fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", outline: "none"
+                    }}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Notes</div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Should have waited for confirmation"
+                    value={journalEntry.notes}
+                    onChange={(e) => setJournalEntry({ ...journalEntry, notes: e.target.value })}
+                    style={{
+                      width: "100%", background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px",
+                      padding: "10px", color: "#e8e8f0",
+                      fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", outline: "none"
+                    }}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={saveJournalEntry}
+                style={{
+                  background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+                  color: "#fff", border: "none", borderRadius: "8px",
+                  padding: "10px 20px", fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: "13px", fontWeight: "700", cursor: "pointer",
+                  boxShadow: "0 4px 15px rgba(167,139,250,0.3)"
+                }}
+              >
+                💾 Save Trade
+              </button>
+            </div>
+          )}
+
+          {/* Journal Entries */}
+          {journal.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {journal.map((entry) => (
+                <div key={entry.id} style={{
+                  background: "rgba(0,0,0,0.2)",
+                  border: "1px solid " + (entry.result === "win" ? "rgba(0,229,160,0.2)" : "rgba(255,77,114,0.2)"),
+                  borderLeft: "3px solid " + (entry.result === "win" ? "#00e5a0" : "#ff4d72"),
+                  borderRadius: "8px", padding: "14px"
+                }}>
+                  {/* Top row */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "13px",
+                        fontWeight: "700", color: entry.type === "LONG" ? "#00e5a0" : "#ff4d72"
+                      }}>{entry.type}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: "#888" }}>{entry.coin}</span>
+                      <span style={{ fontSize: "11px", color: "#444" }}>{new Date(entry.timestamp).toLocaleDateString()}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span style={{
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "16px",
+                        fontWeight: "700", color: entry.result === "win" ? "#00e5a0" : "#ff4d72"
+                      }}>
+                        {parseFloat(entry.pnl) > 0 ? "+" : ""}{entry.pnl}%
+                      </span>
+                      <span style={{
+                        fontSize: "11px", fontWeight: "600",
+                        color: entry.result === "win" ? "#00e5a0" : "#ff4d72"
+                      }}>
+                        {entry.result === "win" ? "✅ Win" : "❌ Loss"}
+                      </span>
+                      <button
+                        onClick={() => deleteJournalEntry(entry.id)}
+                        style={{
+                          background: "transparent", border: "none",
+                          color: "#333", cursor: "pointer", fontSize: "14px"
+                        }}
+                      >🗑️</button>
+                    </div>
+                  </div>
+
+                  {/* Price row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "8px" }}>
+                    {[
+                      { label: "Entry", value: "$" + entry.entry?.toLocaleString() },
+                      { label: "Exit", value: "$" + entry.exit?.toLocaleString() },
+                      { label: "P&L", value: (parseFloat(entry.pnl) > 0 ? "+" : "") + entry.pnl + "%" },
+                    ].map((item) => (
+                      <div key={item.label}>
+                        <div style={{ fontSize: "10px", color: "#444", marginBottom: "2px", fontFamily: "'JetBrains Mono', monospace" }}>{item.label}</div>
+                        <div style={{ fontSize: "13px", color: "#c0c0d0", fontFamily: "'JetBrains Mono', monospace", fontWeight: "600" }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Reason & Notes */}
+                  {entry.reason && (
+                    <div style={{ fontSize: "11px", color: "#666", marginTop: "6px" }}>
+                      <span style={{ color: "#444" }}>Reason: </span>{entry.reason}
+                    </div>
+                  )}
+                  {entry.notes && (
+                    <div style={{ fontSize: "11px", color: "#555", marginTop: "4px", fontStyle: "italic" }}>
+                      <span style={{ color: "#444" }}>Notes: </span>{entry.notes}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              textAlign: "center", padding: "30px",
+              color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px"
+            }}>
+              No trades recorded yet. Click "+ Add Trade" to start your journal!
             </div>
           )}
         </div>
