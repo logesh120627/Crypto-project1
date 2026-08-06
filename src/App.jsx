@@ -446,6 +446,148 @@ const STYLES = `
     .metrics-grid { grid-template-columns: repeat(2, 1fr); }
     .price-main { font-size: 30px; }
     .app { padding: 12px; }
+    .sidebar { display: none; }
+    .main-content { margin-left: 0 !important; }
+  }
+
+  .layout {
+    display: flex;
+    min-height: 100vh;
+    background: #050508;
+  }
+
+  .sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: rgba(255,255,255,0.02);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0; top: 0;
+    z-index: 100;
+    transition: width 0.3s ease;
+  }
+
+  .sidebar.collapsed {
+    width: 60px;
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .sidebar-logo-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #00e5a0, #00b377);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+    box-shadow: 0 0 15px #00e5a044;
+  }
+
+  .sidebar-logo-text {
+    font-size: 15px; font-weight: 700; color: #fff;
+    white-space: nowrap; overflow: hidden;
+  }
+
+  .sidebar-logo-text span { color: #00e5a0; }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #555;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    border: 1px solid transparent;
+  }
+
+  .nav-item:hover {
+    background: rgba(255,255,255,0.04);
+    color: #888;
+  }
+
+  .nav-item.active {
+    background: rgba(0,229,160,0.08);
+    border-color: rgba(0,229,160,0.2);
+    color: #00e5a0;
+  }
+
+  .nav-icon { font-size: 18px; flex-shrink: 0; }
+
+  .sidebar-bottom {
+    padding: 12px 8px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .main-content {
+    flex: 1;
+    margin-left: 220px;
+    transition: margin-left 0.3s ease;
+    min-height: 100vh;
+  }
+
+  .main-content.collapsed {
+    margin-left: 60px;
+  }
+
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .overview-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s;
+  }
+
+  .overview-card:hover {
+    border-color: rgba(255,255,255,0.12);
+    transform: translateY(-1px);
+  }
+
+  .fear-greed-meter {
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg, #ff4d72, #f0c040, #00e5a0);
+    border-radius: 4px;
+    margin: 8px 0;
+    position: relative;
+  }
+
+  .fear-greed-needle {
+    position: absolute;
+    top: -4px;
+    width: 4px; height: 16px;
+    background: #fff;
+    border-radius: 2px;
+    transform: translateX(-50%);
+    box-shadow: 0 0 6px rgba(255,255,255,0.5);
+    transition: left 0.6s ease;
   }
 `;
 
@@ -668,6 +810,10 @@ export default function App() {
       reason: "", result: "", notes: ""
     });
   const [aiMemory, setAiMemory] = useState([]);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [activePage, setActivePage] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [marketOverview, setMarketOverview] = useState({});
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("cryptomind_predictions") || "[]");
@@ -675,6 +821,7 @@ export default function App() {
     const savedJournal = JSON.parse(localStorage.getItem("cryptomind_journal") || "[]");
     setJournal(savedJournal);
     loadAiMemory();
+    fetchMarketOverview();
   }, []);
   // Auto refresh price every 10 seconds
   useEffect(() => {
@@ -743,6 +890,60 @@ export default function App() {
     return "$" + n.toLocaleString();
   }
 
+  async function sendChatMessage(q) {
+    if (!q.trim()) return;
+    setAiLoading(true);
+    setError("");
+    setQuestion("");
+
+    const userMsg = {
+      role: "user",
+      content: q,
+      time: new Date().toLocaleTimeString()
+    };
+    setChatHistory(prev => [...prev, userMsg]);
+
+    const coinInfo = coin
+      ? `${selected.name} (${selected.symbol}): Price $${coin.current_price?.toLocaleString()}, 24h change ${change24h?.toFixed(2)}%, 7d change ${coin.price_change_percentage_7d_in_currency?.toFixed(2)}%, Market cap ${fmt(coin.market_cap)}, 24h High $${coin.high_24h?.toLocaleString()}, 24h Low $${coin.low_24h?.toLocaleString()}, Volume $${fmt(coin.total_volume)}.`
+      : `${selected.name} (${selected.symbol})`;
+
+    const systemPrompt = `You are CryptoMind AI, an expert crypto market analyst. You have access to live market data and always give specific, data-driven answers. Current market data: ${coinInfo}. Be concise, specific, and use bullet points when listing multiple factors. Never give generic advice.`;
+
+    const messages = [
+      ...chatHistory.map(m => ({ role: m.role, content: m.content })),
+      { role: "user", content: q }
+    ];
+
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          max_tokens: 1000,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages
+          ],
+        }),
+      });
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content || "No response received.";
+
+      const aiMsg = {
+        role: "assistant",
+        content: text,
+        time: new Date().toLocaleTimeString()
+      };
+      setChatHistory(prev => [...prev, aiMsg]);
+    } catch (e) {
+      setError("Failed to reach AI. Check your connection.");
+    }
+    setAiLoading(false);
+  }
   async function analyzeWithAI(q) {
     if (!q.trim()) return;
     setAiLoading(true);
@@ -772,6 +973,35 @@ export default function App() {
       setError("Failed to reach AI. Check your connection.");
     }
     setAiLoading(false);
+  }
+  async function fetchMarketOverview() {
+    try {
+      // Fear & Greed Index
+      const fgRes = await fetch("https://api.alternative.me/fng/?limit=1");
+      const fgData = await fgRes.json();
+      const fearGreed = fgData.data?.[0];
+
+      // Global market data from CoinGecko
+      const globalRes = await fetch("https://api.coingecko.com/api/v3/global");
+      const globalData = await globalRes.json();
+
+      // BTC Funding Rate from Binance
+      const fundingRes = await fetch("https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT");
+      const fundingData = await fundingRes.json();
+
+      setMarketOverview({
+        fearGreedValue: fearGreed?.value || 0,
+        fearGreedLabel: fearGreed?.value_classification || "Unknown",
+        btcDominance: globalData?.data?.market_cap_percentage?.btc?.toFixed(1) || 0,
+        totalMarketCap: globalData?.data?.total_market_cap?.usd || 0,
+        totalVolume: globalData?.data?.total_volume?.usd || 0,
+        marketCapChange: globalData?.data?.market_cap_change_percentage_24h_usd?.toFixed(2) || 0,
+        fundingRate: (parseFloat(fundingData?.lastFundingRate || 0) * 100).toFixed(4),
+        activeCryptos: globalData?.data?.active_cryptocurrencies || 0,
+      });
+    } catch (e) {
+      console.error("Market overview error:", e);
+    }
   }
   async function fetchKlines(symbol, interval) {
     try {
@@ -1220,13 +1450,65 @@ function savePrediction() {
   }
   const calc = calcResults();
 
+  const NAV_ITEMS = [
+    { id: "dashboard", icon: "📊", label: "Dashboard" },
+    { id: "chat", icon: "💬", label: "AI Chat" },
+    { id: "debate", icon: "🤖", label: "AI Debate" },
+    { id: "signals", icon: "🎯", label: "Signals" },
+    { id: "journal", icon: "📓", label: "Journal" },
+    { id: "portfolio", icon: "💼", label: "Portfolio" },
+    { id: "watchlist", icon: "👁️", label: "Watchlist" },
+    { id: "settings", icon: "⚙️", label: "Settings" },
+  ];
+
   return (
     <>
       <style>{STYLES}</style>
-      <div className="app">
+      <div className="layout">
 
-        {/* Header */}
-        <div className="header">
+        {/* SIDEBAR */}
+        <div className={`sidebar ${sidebarOpen ? "" : "collapsed"}`}>
+          <div className="sidebar-logo">
+            <div className="sidebar-logo-icon">₿</div>
+            {sidebarOpen && (
+              <div className="sidebar-logo-text">
+                Crypto<span>Mind</span>
+              </div>
+            )}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                marginLeft: "auto", background: "transparent",
+                border: "none", color: "#444", cursor: "pointer",
+                fontSize: "16px", flexShrink: 0
+              }}
+            >{sidebarOpen ? "◀" : "▶"}</button>
+          </div>
+
+          <div className="sidebar-nav">
+            {NAV_ITEMS.map((item) => (
+              <div
+                key={item.id}
+                className={`nav-item ${activePage === item.id ? "active" : ""}`}
+                onClick={() => setActivePage(item.id)}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                {sidebarOpen && <span>{item.label}</span>}
+              </div>
+            ))}
+          </div>
+
+          <div className="sidebar-bottom">
+            <div className="nav-item" style={{ fontSize: "11px", color: "#333" }}>
+              <span className="nav-icon">🟢</span>
+              {sidebarOpen && <span>Live · v2.0</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div className={`main-content ${sidebarOpen ? "" : "collapsed"}`}>
+        <div className="app"></div>
           <div className="logo-wrap">₿</div>
           <div>
             <div className="app-title">Crypto<span>Mind</span> <span style={{ fontSize: 12, color: "#666", fontWeight: 400 }}>Pro</span></div>
@@ -1328,42 +1610,144 @@ function savePrediction() {
         {/* AI Panel */}
         <div className="ai-panel">
           <div className="ai-panel-header">
-            <div className="ai-badge">AI</div>
-            <div className="ai-panel-title">Ask about {selected.name}</div>
+            <div className="ai-badge">AI CHAT</div>
+            <div className="ai-panel-title">CryptoMind AI — {selected.name}</div>
+            <button
+              onClick={() => setChatHistory([])}
+              style={{
+                marginLeft: "auto", background: "transparent",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "6px", padding: "4px 10px",
+                color: "#444", fontSize: "11px",
+                fontFamily: "'JetBrains Mono', monospace",
+                cursor: "pointer"
+              }}
+            >Clear Chat</button>
           </div>
+
+          {/* Quick Questions */}
           <div className="quick-btns">
             {QUICK_QUESTIONS.map((q) => (
               <button key={q} className="quick-btn"
-                onClick={() => { setQuestion(q); analyzeWithAI(q); }}>
+                onClick={() => sendChatMessage(q)}>
                 {q}
               </button>
             ))}
           </div>
+
+          {/* Chat Messages */}
+          <div style={{
+            background: "rgba(0,0,0,0.2)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "10px",
+            padding: "14px",
+            minHeight: "200px",
+            maxHeight: "400px",
+            overflowY: "auto",
+            marginBottom: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px"
+          }}>
+            {chatHistory.length === 0 ? (
+              <div style={{
+                textAlign: "center", color: "#2a2a3a",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "12px", margin: "auto"
+              }}>
+                Ask anything about {selected.symbol} — powered by AI
+              </div>
+            ) : (
+              chatHistory.map((msg, i) => (
+                <div key={i} style={{
+                  display: "flex",
+                  flexDirection: msg.role === "user" ? "row-reverse" : "row",
+                  gap: "10px", alignItems: "flex-start"
+                }}>
+                  {/* Avatar */}
+                  <div style={{
+                    width: "28px", height: "28px",
+                    borderRadius: "50%", flexShrink: 0,
+                    background: msg.role === "user"
+                      ? "rgba(0,229,160,0.2)"
+                      : "rgba(167,139,250,0.2)",
+                    border: "1px solid " + (msg.role === "user" ? "rgba(0,229,160,0.3)" : "rgba(167,139,250,0.3)"),
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "12px"
+                  }}>
+                    {msg.role === "user" ? "👤" : "🤖"}
+                  </div>
+
+                  {/* Message bubble */}
+                  <div style={{
+                    maxWidth: "80%",
+                    background: msg.role === "user"
+                      ? "rgba(0,229,160,0.08)"
+                      : "rgba(167,139,250,0.08)",
+                    border: "1px solid " + (msg.role === "user"
+                      ? "rgba(0,229,160,0.15)"
+                      : "rgba(167,139,250,0.15)"),
+                    borderRadius: msg.role === "user"
+                      ? "12px 12px 0 12px"
+                      : "12px 12px 12px 0",
+                    padding: "10px 14px",
+                  }}>
+                    <div style={{
+                      fontSize: "13px",
+                      color: msg.role === "user" ? "#c0c0d0" : "#b0b0c0",
+                      lineHeight: "1.7",
+                      whiteSpace: "pre-wrap"
+                    }}>{msg.content}</div>
+                    <div style={{
+                      fontSize: "10px", color: "#333",
+                      marginTop: "4px",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      textAlign: msg.role === "user" ? "left" : "right"
+                    }}>{msg.time}</div>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {/* Loading indicator */}
+            {aiLoading && (
+              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                <div style={{
+                  width: "28px", height: "28px", borderRadius: "50%",
+                  background: "rgba(167,139,250,0.2)",
+                  border: "1px solid rgba(167,139,250,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "12px"
+                }}>🤖</div>
+                <div style={{
+                  background: "rgba(167,139,250,0.08)",
+                  border: "1px solid rgba(167,139,250,0.15)",
+                  borderRadius: "12px 12px 12px 0",
+                  padding: "10px 14px",
+                  display: "flex", alignItems: "center", gap: "8px"
+                }}>
+                  <div className="typing-dots"><span /><span /><span /></div>
+                  <span style={{ fontSize: "12px", color: "#555" }}>Analyzing...</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input Row */}
           <div className="ai-prompt-row">
             <input
               className="ai-input"
-              placeholder={`Ask anything about ${selected.symbol}…`}
+              placeholder={`Ask about ${selected.symbol}... (Press Enter to send)`}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && analyzeWithAI(question)}
+              onKeyDown={(e) => e.key === "Enter" && sendChatMessage(question)}
             />
-            <button className="ai-btn" disabled={aiLoading || !question.trim()}
-              onClick={() => analyzeWithAI(question)}>
-              {aiLoading ? "…" : "Analyze"}
+            <button className="ai-btn"
+              disabled={aiLoading || !question.trim()}
+              onClick={() => sendChatMessage(question)}>
+              {aiLoading ? "…" : "Send →"}
             </button>
           </div>
-          {aiLoading ? (
-            <div className="ai-response loading">
-              <div className="typing-dots"><span /><span /><span /></div>
-              <span>Analyzing market data…</span>
-            </div>
-          ) : aiResponse ? (
-            <div className="ai-response">{aiResponse}</div>
-          ) : (
-            <div className="ai-response" style={{ color: "#333" }}>
-              Ask a question or tap a quick option above to get AI-powered insights.
-            </div>
-          )}
           {error && <div className="error-msg">{error}</div>}
         </div>
         {/* Support & Resistance Panel */}
@@ -2688,15 +3072,22 @@ function savePrediction() {
 
           {/* Note */}
           <div style={{
-            marginTop: "12px", padding: "10px", background: "#0a0a0f", borderRadius: "8px",
-            fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444", lineHeight: "1.6"
+            marginTop: "12px",
+            padding: "10px",
+            background: "#0a0a0f",
+            borderRadius: "8px",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: "10px",
+            color: "#444",
+            lineHeight: "1.6"
           }}>
             * Position Size uses 1% risk rule — risks 1% of your capital per trade.
             Always use proper position sizing to protect your account.
           </div>
         </div>
-
       </div>
     </>
   );
 }
+
+
