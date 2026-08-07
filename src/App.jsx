@@ -1508,7 +1508,160 @@ function savePrediction() {
 
         {/* MAIN CONTENT */}
         <div className={`main-content ${sidebarOpen ? "" : "collapsed"}`}>
-        <div className="app"></div>
+        <div className="app">
+        
+        {/* MARKET OVERVIEW PAGE */}
+        {activePage === "dashboard" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+              <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff" }}>
+                Market <span style={{ color: "#00e5a0" }}>Overview</span>
+              </div>
+              <div style={{ marginLeft: "auto", fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", background: "rgba(0,229,160,0.1)", border: "1px solid rgba(0,229,160,0.2)", padding: "3px 10px", borderRadius: "20px" }}>LIVE</div>
+            </div>
+
+            {/* Fear & Greed */}
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "20px", marginBottom: "16px" }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>😨 Fear & Greed Index</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+                <div style={{
+                  width: "80px", height: "80px", borderRadius: "50%", flexShrink: 0,
+                  background: `conic-gradient(${
+                    parseInt(marketOverview.fearGreedValue) <= 25 ? "#ff4d72" :
+                    parseInt(marketOverview.fearGreedValue) <= 50 ? "#f0c040" :
+                    parseInt(marketOverview.fearGreedValue) <= 75 ? "#60a5fa" : "#00e5a0"
+                  } ${parseInt(marketOverview.fearGreedValue) * 3.6}deg, rgba(255,255,255,0.05) 0deg)`,
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}>
+                  <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#050508", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "18px", fontWeight: "700", color: "#fff" }}>{marketOverview.fearGreedValue || "—"}</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "24px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{marketOverview.fearGreedLabel || "Loading..."}</div>
+                  <div style={{ fontSize: "12px", color: "#555", marginBottom: "10px" }}>
+                    {parseInt(marketOverview.fearGreedValue) <= 25 ? "🔴 Extreme Fear — possible buy opportunity" :
+                     parseInt(marketOverview.fearGreedValue) <= 50 ? "🟡 Fear — market cautious" :
+                     parseInt(marketOverview.fearGreedValue) <= 75 ? "🟢 Greed — market optimistic" :
+                     "🔥 Extreme Greed — consider taking profits"}
+                  </div>
+                  <div className="fear-greed-meter">
+                    <div className="fear-greed-needle" style={{ left: (marketOverview.fearGreedValue || 0) + "%" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#333", fontFamily: "'JetBrains Mono', monospace", marginTop: "4px" }}>
+                    <span>Extreme Fear</span>
+                    <span>Extreme Greed</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Overview Grid */}
+            <div className="overview-grid">
+              {[
+                {
+                  label: "Total Market Cap",
+                  value: marketOverview.totalMarketCap >= 1e12
+                    ? "$" + (marketOverview.totalMarketCap / 1e12).toFixed(2) + "T"
+                    : marketOverview.totalMarketCap
+                    ? "$" + (marketOverview.totalMarketCap / 1e9).toFixed(0) + "B"
+                    : "—",
+                  sub: (parseFloat(marketOverview.marketCapChange) >= 0 ? "+" : "") + (marketOverview.marketCapChange || "0") + "% 24h",
+                  color: parseFloat(marketOverview.marketCapChange) >= 0 ? "#00e5a0" : "#ff4d72",
+                  icon: "💰"
+                },
+                {
+                  label: "BTC Dominance",
+                  value: marketOverview.btcDominance ? marketOverview.btcDominance + "%" : "—",
+                  sub: "Bitcoin market share",
+                  color: "#f0c040",
+                  icon: "₿"
+                },
+                {
+                  label: "24h Volume",
+                  value: marketOverview.totalVolume >= 1e12
+                    ? "$" + (marketOverview.totalVolume / 1e12).toFixed(2) + "T"
+                    : marketOverview.totalVolume
+                    ? "$" + (marketOverview.totalVolume / 1e9).toFixed(0) + "B"
+                    : "—",
+                  sub: "Total trading volume",
+                  color: "#60a5fa",
+                  icon: "📊"
+                },
+                {
+                  label: "BTC Funding Rate",
+                  value: marketOverview.fundingRate ? marketOverview.fundingRate + "%" : "—",
+                  sub: parseFloat(marketOverview.fundingRate) > 0 ? "Longs paying shorts" : "Shorts paying longs",
+                  color: parseFloat(marketOverview.fundingRate) > 0 ? "#00e5a0" : "#ff4d72",
+                  icon: "💸"
+                },
+                {
+                  label: "Active Cryptos",
+                  value: marketOverview.activeCryptos?.toLocaleString() || "—",
+                  sub: "Listed on CoinGecko",
+                  color: "#a78bfa",
+                  icon: "🪙"
+                },
+                {
+                  label: "Market Sentiment",
+                  value: parseInt(marketOverview.fearGreedValue) >= 60 ? "Bullish" :
+                         parseInt(marketOverview.fearGreedValue) >= 40 ? "Neutral" : "Bearish",
+                  sub: "Based on Fear & Greed",
+                  color: parseInt(marketOverview.fearGreedValue) >= 60 ? "#00e5a0" :
+                         parseInt(marketOverview.fearGreedValue) >= 40 ? "#f0c040" : "#ff4d72",
+                  icon: "🧭"
+                },
+              ].map((item) => (
+                <div key={item.label} className="overview-card">
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "20px" }}>{item.icon}</span>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px" }}>{item.label}</div>
+                  </div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: item.color, marginBottom: "4px" }}>{item.value}</div>
+                  <div style={{ fontSize: "11px", color: "#444" }}>{item.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick Prices */}
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "20px" }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>📈 Quick Prices</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px" }}>
+                {COINS.slice(0, 10).map((c) => {
+                  const coinD = marketData[c.id];
+                  const change = coinD?.price_change_percentage_24h ?? 0;
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => { setActivePage("analyzer"); setSelected(c); }}
+                      style={{
+                        background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.04)",
+                        borderRadius: "8px", padding: "10px", cursor: "pointer",
+                        textAlign: "center", transition: "all 0.2s"
+                      }}
+                    >
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{c.symbol}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#888", marginBottom: "4px" }}>
+                        {coinD ? "$" + (coinD.current_price >= 1
+                          ? coinD.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          : coinD.current_price?.toFixed(4)) : "—"}
+                      </div>
+                      <div style={{ fontSize: "10px", color: change >= 0 ? "#00e5a0" : "#ff4d72", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {change >= 0 ? "▲" : "▼"} {Math.abs(change).toFixed(2)}%
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* MAIN ANALYZER */}
+        {activePage !== "dashboard" && (
+        <div>
+        {/* Header */}
+        <div className="header">
           <div className="logo-wrap">₿</div>
           <div>
             <div className="app-title">Crypto<span>Mind</span> <span style={{ fontSize: 12, color: "#666", fontWeight: 400 }}>Pro</span></div>
@@ -3072,22 +3225,19 @@ function savePrediction() {
 
           {/* Note */}
           <div style={{
-            marginTop: "12px",
-            padding: "10px",
-            background: "#0a0a0f",
-            borderRadius: "8px",
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: "10px",
-            color: "#444",
-            lineHeight: "1.6"
+            marginTop: "12px", padding: "10px", background: "#0a0a0f", borderRadius: "8px",
+            fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444", lineHeight: "1.6"
           }}>
             * Position Size uses 1% risk rule — risks 1% of your capital per trade.
-            Always use proper position sizing to protect your account.
+            Always use proper position sizing to protect your account
+
           </div>
+        </div>
+        </div>
+        )}
+        </div>
         </div>
       </div>
     </>
   );
 }
-
-
