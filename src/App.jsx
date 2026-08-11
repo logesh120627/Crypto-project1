@@ -802,6 +802,8 @@ export default function App() {
   const [consensus, setConsensus] = useState(null);
   const [timeframe, setTimeframe] = useState("1h");
   const [klineData, setKlineData] = useState([]);
+  const [wsConnected, setWsConnected] = useState(false);
+  const wsRef = useRef(null);
   const [predictions, setPredictions] = useState([]);
   const [journal, setJournal] = useState([]);
   const [showJournal, setShowJournal] = useState(false);
@@ -815,12 +817,62 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [marketOverview, setMarketOverview] = useState({});
 
+  // Cleanup WebSocket on unmount
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("cryptomind_predictions") || "[]");
     setPredictions(saved);
     const savedJournal = JSON.parse(localStorage.getItem("cryptomind_journal") || "[]");
     setJournal(savedJournal);
     loadAiMemory();
+    function connectWebSocket(symbol) {
+    // Close existing connection
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    const ws = new WebSocket(
+      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`
+    );
+
+    ws.onopen = () => {
+      setWsConnected(true);
+      console.log("WebSocket connected:", symbol);
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setMarketData(prev => ({
+        ...prev,
+        [selected.id]: {
+          ...prev[selected.id],
+          current_price: parseFloat(data.c),
+          high_24h: parseFloat(data.h),
+          low_24h: parseFloat(data.l),
+          total_volume: parseFloat(data.q),
+          price_change_percentage_24h: parseFloat(data.P),
+        }
+      }));
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setWsConnected(false);
+    };
+
+    ws.onclose = () => {
+      setWsConnected(false);
+      console.log("WebSocket disconnected");
+    };
+
+    wsRef.current = ws;
+  }
     fetchMarketOverview();
   }, []);
   // Auto refresh price every 10 seconds
@@ -878,7 +930,8 @@ export default function App() {
     const coin = marketData[selected.id];
     if (coin?.sparkline_in_7d?.price) setPrices(coin.sparkline_in_7d.price);
     fetchKlines(selected.binance, timeframe);
-  }, [selected, marketData]);
+    if (selected.binance) connectWebSocket(selected.binance);
+  }, [selected]);
   const coin = marketData[selected.id];
   const change24h = coin?.price_change_percentage_24h ?? 0;
   const isUp = change24h >= 0;
@@ -1668,7 +1721,22 @@ function savePrediction() {
           </div>
           <div className="app-sub">Live · AI</div>
           <div className="version-badge">v2.0</div>
-          <div className="logo-dot" style={{ marginLeft: "auto" }} />
+          <div style={{
+            marginLeft: "auto", display: "flex",
+            alignItems: "center", gap: "6px"
+          }}>
+            <div style={{
+              width: "6px", height: "6px", borderRadius: "50%",
+              background: wsConnected ? "#00e5a0" : "#ff4d72",
+              boxShadow: wsConnected ? "0 0 8px #00e5a0" : "0 0 8px #ff4d72",
+              animation: "pulse 2s infinite"
+            }} />
+            <span style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "9px", color: wsConnected ? "#00e5a0" : "#ff4d72",
+              letterSpacing: "1px"
+            }}>{wsConnected ? "LIVE" : "CONNECTING"}</span>
+          </div>
         </div>
 
         {/* Coin Tabs */}
