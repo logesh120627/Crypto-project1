@@ -831,59 +831,7 @@ export default function App() {
     const savedJournal = JSON.parse(localStorage.getItem("cryptomind_journal") || "[]");
     setJournal(savedJournal);
     loadAiMemory();
-    function connectWebSocket(symbol) {
-    // Close existing connection
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-
-    const ws = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`
-    );
-
-    ws.onopen = () => {
-      setWsConnected(true);
-      console.log("WebSocket connected:", symbol);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (!data.c) return;
-        setMarketData(prev => {
-          const coinId = Object.keys(prev).find(key =>
-            COINS.find(c => c.id === key && c.binance === symbol.toUpperCase())
-          );
-          if (!coinId) return prev;
-          return {
-            ...prev,
-            [coinId]: {
-              ...prev[coinId],
-              current_price: parseFloat(data.c),
-              high_24h: parseFloat(data.h),
-              low_24h: parseFloat(data.l),
-              total_volume: parseFloat(data.q),
-              price_change_percentage_24h: parseFloat(data.P),
-            }
-          };
-        });
-      } catch (e) {
-        console.error("WS message error:", e);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setWsConnected(false);
-    };
-
-    ws.onclose = () => {
-      setWsConnected(false);
-      console.log("WebSocket disconnected");
-    };
-
-    wsRef.current = ws;
-  }
+    
     fetchMarketOverview();
   }, []);
   // Auto refresh price every 10 seconds
@@ -1234,6 +1182,59 @@ WHY_NOT_100:
 
     setAgentLoading(false);
   }
+  function connectWebSocket(symbol) {
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    const ws = new WebSocket(
+      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`
+    );
+
+    ws.onopen = () => {
+      setWsConnected(true);
+      console.log("WebSocket connected:", symbol);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (!data.c) return;
+        setMarketData(prev => {
+          const coinId = Object.keys(prev).find(key =>
+            COINS.find(c => c.id === key && c.binance === symbol.toUpperCase())
+          );
+          if (!coinId) return prev;
+          return {
+            ...prev,
+            [coinId]: {
+              ...prev[coinId],
+              current_price: parseFloat(data.c),
+              high_24h: parseFloat(data.h),
+              low_24h: parseFloat(data.l),
+              total_volume: parseFloat(data.q),
+              price_change_percentage_24h: parseFloat(data.P),
+            }
+          };
+        });
+      } catch (e) {
+        console.error("WS message error:", e);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setWsConnected(false);
+    };
+
+    ws.onclose = () => {
+      setWsConnected(false);
+      console.log("WebSocket disconnected");
+    };
+
+    wsRef.current = ws;
+  }
+
   const change7d = coin?.price_change_percentage_7d_in_currency ?? 0;
   const rawSentiment = 50 + change24h * 2 + change7d * 0.5;
   const sentiment = Math.min(100, Math.max(0, rawSentiment));
