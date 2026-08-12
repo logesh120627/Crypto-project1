@@ -847,18 +847,29 @@ export default function App() {
     };
 
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setMarketData(prev => ({
-        ...prev,
-        [selected.id]: {
-          ...prev[selected.id],
-          current_price: parseFloat(data.c),
-          high_24h: parseFloat(data.h),
-          low_24h: parseFloat(data.l),
-          total_volume: parseFloat(data.q),
-          price_change_percentage_24h: parseFloat(data.P),
-        }
-      }));
+      try {
+        const data = JSON.parse(event.data);
+        if (!data.c) return;
+        setMarketData(prev => {
+          const coinId = Object.keys(prev).find(key =>
+            COINS.find(c => c.id === key && c.binance === symbol.toUpperCase())
+          );
+          if (!coinId) return prev;
+          return {
+            ...prev,
+            [coinId]: {
+              ...prev[coinId],
+              current_price: parseFloat(data.c),
+              high_24h: parseFloat(data.h),
+              low_24h: parseFloat(data.l),
+              total_volume: parseFloat(data.q),
+              price_change_percentage_24h: parseFloat(data.P),
+            }
+          };
+        });
+      } catch (e) {
+        console.error("WS message error:", e);
+      }
     };
 
     ws.onerror = (error) => {
