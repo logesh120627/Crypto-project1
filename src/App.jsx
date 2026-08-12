@@ -804,6 +804,15 @@ export default function App() {
   const [klineData, setKlineData] = useState([]);
   const [wsConnected, setWsConnected] = useState(false);
   const wsRef = useRef(null);
+  const [marketType, setMarketType] = useState("spot");
+  const [spotPrice, setSpotPrice] = useState(null);
+  const [futuresPrice, setFuturesPrice] = useState(null);
+  const [markPrice, setMarkPrice] = useState(null);
+  const [indexPrice, setIndexPrice] = useState(null);
+  const [fundingRate, setFundingRate] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const wsSpotRef = useRef(null);
+  const wsFuturesRef = useRef(null);
   const [predictions, setPredictions] = useState([]);
   const [journal, setJournal] = useState([]);
   const [showJournal, setShowJournal] = useState(false);
@@ -820,9 +829,8 @@ export default function App() {
   // Cleanup WebSocket on unmount
   useEffect(() => {
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      if (wsSpotRef.current) wsSpotRef.current.close();
+      if (wsFuturesRef.current) wsFuturesRef.current.close();
     };
   }, []);
   useEffect(() => {
@@ -889,11 +897,23 @@ export default function App() {
     const coin = marketData[selected.id];
     if (coin?.sparkline_in_7d?.price) setPrices(coin.sparkline_in_7d.price);
     fetchKlines(selected.binance, timeframe);
-    if (selected.binance) connectWebSocket(selected.binance);
+    if (selected.binance) {
+      connectSpotWS(selected.binance);
+      connectFuturesWS(selected.binance);
+    }
+    setSpotPrice(null);
+    setFuturesPrice(null);
+    setMarkPrice(null);
+    setIndexPrice(null);
   }, [selected]);
   const coin = marketData[selected.id];
   const change24h = coin?.price_change_percentage_24h ?? 0;
   const isUp = change24h >= 0;
+  
+  // Active price based on market type
+  const activePrice = marketType === "futures" 
+    ? (futuresPrice || coin?.current_price)
+    : (spotPrice || coin?.current_price);
 
   function fmt(n) {
     if (!n && n !== 0) return "—";
@@ -1181,6 +1201,71 @@ WHY_NOT_100:
     }
 
     setAgentLoading(false);
+  }
+  function connectSpotWS(symbol) {
+    if (wsSpotRef.current) wsSpotRef.current.close();
+    const ws = new WebSocket(
+      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@ticker`
+    );
+    ws.onopen = () => setWsConnected(true);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (!data.c) return;
+        setSpotPrice(parseFloat(data.c));
+        setLastUpdated(Date.now());
+        setMarketData(prev => {
+          const coinId = Object.keys(prev).find(key =>
+            COINS.find(c => c.id === key && c.binance === symbol.toUpperCase())
+          );
+          if (!coinId) return prev;
+          return {
+            ...prev,
+            [coinId]: {
+              ...prev[coinId],
+              current_price: parseFloat(data.c),
+              high_24h: parseFloat(data.h),
+              low_24h: parseFloat(data.l),
+              total_volume: parseFloat(data.q),
+              price_change_percentage_24h: parseFloat(data.P),
+            }
+          };
+        });
+      } catch (e) { console.error("Spot WS error:", e); }
+    };
+    ws.onerror = () => setWsConnected(false);
+    ws.onclose = () => setWsConnected(false);
+    wsSpotRef.current = ws;
+  }
+
+  function connectFuturesWS(symbol) {
+    if (wsFuturesRef.current) wsFuturesRef.current.close();
+    // Futures ticker
+    const ws = new WebSocket(
+      `wss://fstream.binance.com/ws/${symbol.toLowerCase()}@ticker`
+    );
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (!data.c) return;
+        setFuturesPrice(parseFloat(data.c));
+        setLastUpdated(Date.now());
+      } catch (e) { console.error("Futures WS error:", e); }
+    };
+    wsFuturesRef.current = ws;
+
+    // Mark price + funding rate
+    const ws2 = new WebSocket(
+      `wss://fstream.binance.com/ws/${symbol.toLowerCase()}@markPrice@1s`
+    );
+    ws2.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setMarkPrice(parseFloat(data.p));
+        setIndexPrice(parseFloat(data.i));
+        setFundingRate(parseFloat(data.r) * 100);
+      } catch (e) { console.error("Mark price WS error:", e); }
+    };
   }
   function connectWebSocket(symbol) {
     if (wsRef.current) {
@@ -1764,20 +1849,157 @@ function savePrediction() {
           ))}
         </div>
 
-        {/* Price */}
-        <div className="price-row">
-          <div className="price-main">
-            {coin ? "$" + (coin.current_price >= 1
-              ? coin.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-              : coin.current_price?.toFixed(4)
-            ) : "Loading…"}
+        {/* Market Type Switch + Price Card */}
+        <div style={{
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "14px", padding: "20px", marginBottom: "20px"
+        }}>
+          {/* Market Switch */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            {[
+              { id: "spot", label: "🟢 Spot", color: "#00e5a0" },
+              { id: "futures", label: "🟣 Futures", color: "#a78bfa" },
+              { id: "compare", label: "⚖️ Compare", color: "#f0c040" },
+            ].map((t) => (
+              <button key={t.id} onClick={() => setMarketType(t.id)} style={{
+                background: marketType === t.id ? t.color + "15" : "rgba(255,255,255,0.03)",
+                border: "1px solid " + (marketType === t.id ? t.color : "rgba(255,255,255,0.08)"),
+                borderRadius: "8px", padding: "8px 16px",
+                color: marketType === t.id ? t.color : "#555",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "12px", fontWeight: "600", cursor: "pointer",
+                transition: "all 0.2s"
+              }}>{t.label}</button>
+            ))}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{
+                width: "6px", height: "6px", borderRadius: "50%",
+                background: wsConnected ? "#00e5a0" : "#ff4d72",
+                boxShadow: wsConnected ? "0 0 8px #00e5a0" : "none",
+                animation: "pulse 2s infinite"
+              }} />
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444" }}>
+                {lastUpdated ? `Updated ${((Date.now() - lastUpdated) / 1000).toFixed(1)}s ago` : "Connecting..."}
+              </span>
+            </div>
           </div>
-          {coin && (
-            <div className={`price-change ${isUp ? "up" : "down"}`}>
-              {isUp ? "▲" : "▼"} {Math.abs(change24h).toFixed(2)}% 24h
+
+          {/* SPOT MODE */}
+          {marketType === "spot" && (
+            <div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                {selected.symbol}/USDT — SPOT · Binance
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#fff", letterSpacing: "-2px" }}>
+                  ${spotPrice ? spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : coin?.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "—"}
+                </div>
+                {coin && (
+                  <div style={{
+                    fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", fontWeight: "600",
+                    padding: "4px 12px", borderRadius: "8px",
+                    background: isUp ? "rgba(0,229,160,0.12)" : "rgba(255,77,114,0.12)",
+                    color: isUp ? "#00e5a0" : "#ff4d72",
+                    border: "1px solid " + (isUp ? "rgba(0,229,160,0.2)" : "rgba(255,77,114,0.2)")
+                  }}>
+                    {isUp ? "▲" : "▼"} {Math.abs(change24h).toFixed(2)}% 24h
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: "11px", color: "#444", marginTop: "6px", fontFamily: "'JetBrains Mono', monospace" }}>
+                SOURCE: Binance Spot
+              </div>
+            </div>
+          )}
+
+          {/* FUTURES MODE */}
+          {marketType === "futures" && (
+            <div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                {selected.symbol}USDT — PERPETUAL · Binance Futures
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "12px", marginBottom: "16px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#a78bfa", letterSpacing: "-2px" }}>
+                  ${futuresPrice ? futuresPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "Connecting..."}
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                {[
+                  { label: "Mark Price", value: markPrice ? "$" + markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—", color: "#a78bfa" },
+                  { label: "Index Price", value: indexPrice ? "$" + indexPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—", color: "#60a5fa" },
+                  { label: "Funding Rate", value: fundingRate ? fundingRate.toFixed(4) + "%" : "—", color: fundingRate > 0 ? "#00e5a0" : "#ff4d72" },
+                ].map((item) => (
+                  <div key={item.label} style={{ background: "rgba(0,0,0,0.2)", borderRadius: "8px", padding: "10px" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444", marginBottom: "4px" }}>{item.label}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "14px", fontWeight: "700", color: item.color }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: "11px", color: "#444", marginTop: "8px", fontFamily: "'JetBrains Mono', monospace" }}>
+                SOURCE: Binance Futures (USDⓈ-M Perpetual)
+              </div>
+            </div>
+          )}
+
+          {/* COMPARE MODE */}
+          {marketType === "compare" && (
+            <div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>
+                {selected.symbol} — Spot vs Futures Comparison
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
+                {/* Spot */}
+                <div style={{ background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "10px", padding: "14px" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>🟢 Spot</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: "#fff" }}>
+                    ${spotPrice ? spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+                  </div>
+                  <div style={{ fontSize: "10px", color: "#444", marginTop: "4px" }}>Binance Spot</div>
+                </div>
+                {/* Futures */}
+                <div style={{ background: "rgba(167,139,250,0.04)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "10px", padding: "14px" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>🟣 Futures</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: "#fff" }}>
+                    ${futuresPrice ? futuresPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+                  </div>
+                  <div style={{ fontSize: "10px", color: "#444", marginTop: "4px" }}>Binance Futures</div>
+                </div>
+              </div>
+
+              {/* Spread */}
+              {spotPrice && futuresPrice && (
+                <div style={{ background: "rgba(240,192,64,0.06)", border: "1px solid rgba(240,192,64,0.2)", borderRadius: "10px", padding: "14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#f0c040", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "1px" }}>Spread (Futures - Spot)</div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: (futuresPrice - spotPrice) >= 0 ? "#00e5a0" : "#ff4d72" }}>
+                        {(futuresPrice - spotPrice) >= 0 ? "+" : ""}${(futuresPrice - spotPrice).toFixed(2)}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", marginBottom: "4px" }}>Spread %</div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: (futuresPrice - spotPrice) >= 0 ? "#00e5a0" : "#ff4d72" }}>
+                        {(((futuresPrice - spotPrice) / spotPrice) * 100).toFixed(4)}%
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: "10px", fontSize: "11px", color: "#555" }}>
+                    {(futuresPrice - spotPrice) > 0
+                      ? "✅ Futures trading at premium — bullish sentiment, longs dominant"
+                      : "⚠️ Futures trading at discount — bearish sentiment, shorts dominant"}
+                  </div>
+                  {fundingRate && (
+                    <div style={{ marginTop: "6px", fontSize: "11px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>
+                      Funding Rate: {fundingRate.toFixed(4)}% — {fundingRate > 0 ? "longs paying shorts" : "shorts paying longs"}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
+        
 
         {/* Metrics */}
         <div className="metrics-grid">
@@ -1831,7 +2053,7 @@ function savePrediction() {
               positive={isUp}
               supports={srLevels.supports}
               resistances={srLevels.resistances}
-              currentPrice={coin?.current_price}
+              currentPrice={activePrice}
             />
           ) : (
             <div style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", color: "#333", fontSize: 13 }}>
@@ -2014,7 +2236,7 @@ function savePrediction() {
             <div style={{
               fontFamily: "'JetBrains Mono', monospace", fontSize: "16px",
               fontWeight: "700", color: isUp ? "#00e5a0" : "#ff4d72"
-            }}>${coin?.current_price?.toLocaleString()}</div>
+            }}>${activePrice?.toLocaleString()}</div>
           </div>
 
           {/* Two columns */}
