@@ -1240,18 +1240,19 @@ WHY_NOT_100:
 
   function connectFuturesWS(symbol) {
     if (wsFuturesRef.current) wsFuturesRef.current.close();
-    // Futures ticker
+    // Use @trade for real-time futures price
     const ws = new WebSocket(
-      `wss://fstream.binance.com/ws/${symbol.toLowerCase()}@ticker`
+      `wss://fstream.binance.com/ws/${symbol.toLowerCase()}@trade`
     );
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (!data.c) return;
-        setFuturesPrice(parseFloat(data.c));
+        if (!data.p) return;
+        setFuturesPrice(parseFloat(data.p));
         setLastUpdated(Date.now());
       } catch (e) { console.error("Futures WS error:", e); }
     };
+    ws.onerror = () => console.error("Futures WS error");
     wsFuturesRef.current = ws;
 
     // Mark price + funding rate
@@ -1921,7 +1922,13 @@ function savePrediction() {
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: "12px", marginBottom: "16px" }}>
                 <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#a78bfa", letterSpacing: "-2px" }}>
-                  ${futuresPrice ? futuresPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "Connecting..."}
+                  {futuresPrice
+                    ? "$" + futuresPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : spotPrice
+                    ? "$" + spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : coin?.current_price
+                    ? "$" + coin.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : "—"}
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
@@ -1968,19 +1975,24 @@ function savePrediction() {
               </div>
 
               {/* Spread */}
-              {spotPrice && futuresPrice && (
+              {(() => {
+                const sp = spotPrice || coin?.current_price;
+                const fp = futuresPrice || coin?.current_price;
+                const spread = fp - sp;
+                const spreadPct = ((spread / sp) * 100).toFixed(4);
+                return sp && fp ? (
                 <div style={{ background: "rgba(240,192,64,0.06)", border: "1px solid rgba(240,192,64,0.2)", borderRadius: "10px", padding: "14px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#f0c040", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "1px" }}>Spread (Futures - Spot)</div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: (futuresPrice - spotPrice) >= 0 ? "#00e5a0" : "#ff4d72" }}>
-                        {(futuresPrice - spotPrice) >= 0 ? "+" : ""}${(futuresPrice - spotPrice).toFixed(2)}
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: spread >= 0 ? "#00e5a0" : "#ff4d72" }}>
+                        {spread >= 0 ? "+" : ""}${spread.toFixed(2)}
                       </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", marginBottom: "4px" }}>Spread %</div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: (futuresPrice - spotPrice) >= 0 ? "#00e5a0" : "#ff4d72" }}>
-                        {(((futuresPrice - spotPrice) / spotPrice) * 100).toFixed(4)}%
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: spreadPct >= 0 ? "#00e5a0" : "#ff4d72" }}>
+                        {spreadPct >= 0 ? "+" : ""}${spreadPct}%
                       </div>
                     </div>
                   </div>
@@ -1995,7 +2007,12 @@ function savePrediction() {
                     </div>
                   )}
                 </div>
-              )}
+                ) : (
+                  <div style={{ textAlign: "center", padding: "20px", color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
+                    Connecting to live streams...
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
