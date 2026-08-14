@@ -954,7 +954,7 @@ export default function App() {
           "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "llama-3.3-70b-versatile",
           max_tokens: 1000,
           messages: [
             { role: "system", content: systemPrompt },
@@ -993,7 +993,7 @@ export default function App() {
           "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "llama-3.3-70b-versatile",
           messages: [{ role: "user", content: prompt }],
           max_tokens: 1000,
         }),
@@ -1084,7 +1084,7 @@ export default function App() {
             "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
           },
           body: JSON.stringify({
-            model: "llama-3.1-8b-instant",
+            model: "llama-3.3-70b-versatile",
             max_tokens: 1000,
             messages: [
               {
@@ -1120,7 +1120,7 @@ export default function App() {
           "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "llama-3.3-70b-versatile",
           max_tokens: 2000,
           messages: [
             {
