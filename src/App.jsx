@@ -1997,7 +1997,7 @@ function savePrediction() {
                     </div>
                   </div>
                   <div style={{ marginTop: "10px", fontSize: "11px", color: "#555" }}>
-                    {(futuresPrice - spotPrice) > 0
+                    {spread > 0
                       ? "✅ Futures trading at premium — bullish sentiment, longs dominant"
                       : "⚠️ Futures trading at discount — bearish sentiment, shorts dominant"}
                   </div>
