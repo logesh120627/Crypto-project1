@@ -1992,7 +1992,7 @@ function savePrediction() {
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", marginBottom: "4px" }}>Spread %</div>
                       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: spreadPct >= 0 ? "#00e5a0" : "#ff4d72" }}>
-                        {spreadPct >= 0 ? "+" : ""}${spreadPct}%
+                        {spreadPct >= 0 ? "+" : ""}{spreadPct}%
                       </div>
                     </div>
                   </div>
