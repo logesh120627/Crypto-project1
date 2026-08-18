@@ -845,7 +845,19 @@ export default function App() {
   // Auto refresh price every 10 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchData();
+      async function refresh() {
+        try {
+          const ids = COINS.map((c) => c.id).join(",");
+          const geckoRes = await fetch(
+            `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=true&price_change_percentage=24h,7d`
+          );
+          const geckoData = await geckoRes.json();
+          const map = {};
+          geckoData.forEach((d) => (map[d.id] = d));
+          setMarketData(prev => ({ ...prev, ...map }));
+        } catch (e) { console.error(e); }
+      }
+      refresh();
     }, 10000);
     return () => clearInterval(interval);
   }, [selected]);
@@ -954,7 +966,7 @@ export default function App() {
           "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-20b",
           max_tokens: 1000,
           messages: [
             { role: "system", content: systemPrompt },
@@ -993,7 +1005,7 @@ export default function App() {
           "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-20b",
           messages: [{ role: "user", content: prompt }],
           max_tokens: 1000,
         }),
@@ -1084,7 +1096,7 @@ export default function App() {
             "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
           },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-20b",
             max_tokens: 1000,
             messages: [
               {
@@ -1104,7 +1116,7 @@ export default function App() {
         responses[agent.id] = "Failed to get response.";
       }
       setAgentResponses({ ...responses });
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }
 
     // Calculate consensus
@@ -1120,7 +1132,7 @@ export default function App() {
           "Authorization": "Bearer " + import.meta.env.VITE_GROQ_KEY
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-20b",
           max_tokens: 2000,
           messages: [
             {
