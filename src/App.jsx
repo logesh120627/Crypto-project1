@@ -1613,14 +1613,41 @@ function savePrediction() {
   }
   const calc = calcResults();
 
-  const NAV_ITEMS = [
+    const CHART_PATTERNS = [
+    { id: 1, name: "Head & Shoulders", type: "Bearish Reversal", emoji: "📉", description: "Price forms three peaks, middle being highest. Signals trend reversal from bullish to bearish.", reliability: "High" },
+    { id: 2, name: "Inverse Head & Shoulders", type: "Bullish Reversal", emoji: "📈", description: "Price forms three troughs, middle being lowest. Signals trend reversal from bearish to bullish.", reliability: "High" },
+    { id: 3, name: "Double Top", type: "Bearish Reversal", emoji: "🔴", description: "Price hits resistance twice and fails. Strong bearish signal when neckline breaks.", reliability: "High" },
+    { id: 4, name: "Double Bottom", type: "Bullish Reversal", emoji: "🟢", description: "Price hits support twice and bounces. Strong bullish signal when neckline breaks.", reliability: "High" },
+    { id: 5, name: "Triple Top", type: "Bearish Reversal", emoji: "🔴", description: "Price tests resistance three times and fails. Very strong bearish reversal signal.", reliability: "Very High" },
+    { id: 6, name: "Triple Bottom", type: "Bullish Reversal", emoji: "🟢", description: "Price tests support three times and holds. Very strong bullish reversal signal.", reliability: "Very High" },
+    { id: 7, name: "Bull Flag", type: "Bullish Continuation", emoji: "🚩", description: "Sharp upward move followed by slight downward consolidation. Continuation of uptrend expected.", reliability: "High" },
+    { id: 8, name: "Bear Flag", type: "Bearish Continuation", emoji: "🚩", description: "Sharp downward move followed by slight upward consolidation. Continuation of downtrend expected.", reliability: "High" },
+    { id: 9, name: "Ascending Triangle", type: "Bullish Continuation", emoji: "📐", description: "Higher lows with flat resistance. Breakout above resistance expected.", reliability: "Medium" },
+    { id: 10, name: "Descending Triangle", type: "Bearish Continuation", emoji: "📐", description: "Lower highs with flat support. Breakdown below support expected.", reliability: "Medium" },
+    { id: 11, name: "Symmetrical Triangle", type: "Neutral", emoji: "🔺", description: "Converging trendlines. Breakout can go either direction, follow the trend.", reliability: "Medium" },
+    { id: 12, name: "Rising Wedge", type: "Bearish Reversal", emoji: "⚠️", description: "Price rises but in narrowing range. Usually breaks down bearishly.", reliability: "Medium" },
+    { id: 13, name: "Falling Wedge", type: "Bullish Reversal", emoji: "✅", description: "Price falls but in narrowing range. Usually breaks up bullishly.", reliability: "Medium" },
+    { id: 14, name: "Cup & Handle", type: "Bullish Continuation", emoji: "☕", description: "U-shaped recovery followed by small pullback. Strong bullish continuation pattern.", reliability: "High" },
+    { id: 15, name: "Pennant", type: "Continuation", emoji: "🔱", description: "Small symmetrical triangle after sharp move. Continuation of prior trend expected.", reliability: "Medium" },
+    { id: 16, name: "Rounding Bottom", type: "Bullish Reversal", emoji: "🌙", description: "Gradual U-shaped price recovery. Long-term bullish reversal signal.", reliability: "Medium" },
+    { id: 17, name: "Doji Candle", type: "Reversal Signal", emoji: "✝️", description: "Open and close at same level. Signals indecision and possible reversal.", reliability: "Medium" },
+    { id: 18, name: "Hammer", type: "Bullish Reversal", emoji: "🔨", description: "Small body with long lower shadow. Strong bullish reversal at support.", reliability: "High" },
+    { id: 19, name: "Shooting Star", type: "Bearish Reversal", emoji: "⭐", description: "Small body with long upper shadow. Strong bearish reversal at resistance.", reliability: "High" },
+    { id: 20, name: "Engulfing Bullish", type: "Bullish Reversal", emoji: "🟢", description: "Large green candle engulfs previous red candle. Strong buy signal.", reliability: "High" },
+    { id: 21, name: "Engulfing Bearish", type: "Bearish Reversal", emoji: "🔴", description: "Large red candle engulfs previous green candle. Strong sell signal.", reliability: "High" },
+    { id: 22, name: "Morning Star", type: "Bullish Reversal", emoji: "🌅", description: "Three candle pattern signaling bottom reversal. Strong bullish signal.", reliability: "Very High" },
+    { id: 23, name: "Evening Star", type: "Bearish Reversal", emoji: "🌆", description: "Three candle pattern signaling top reversal. Strong bearish signal.", reliability: "Very High" },
+    { id: 24, name: "Harami Bullish", type: "Bullish Reversal", emoji: "📦", description: "Small candle inside previous large candle. Signals potential trend reversal.", reliability: "Low" },
+  ];
+
+  const [selectedPattern, setSelectedPattern] = useState(null);
+    const NAV_ITEMS = [
     { id: "dashboard", icon: "📊", label: "Dashboard" },
     { id: "chat", icon: "💬", label: "AI Chat" },
     { id: "debate", icon: "🤖", label: "AI Debate" },
-    { id: "signals", icon: "🎯", label: "Signals" },
+    { id: "patterns", icon: "📈", label: "Chart Patterns" },
     { id: "journal", icon: "📓", label: "Journal" },
     { id: "portfolio", icon: "💼", label: "Portfolio" },
-    { id: "watchlist", icon: "👁️", label: "Watchlist" },
     { id: "settings", icon: "⚙️", label: "Settings" },
   ];
 
@@ -1816,6 +1843,422 @@ function savePrediction() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+                {/* CHART PATTERNS PAGE */}
+        {activePage === "patterns" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+              <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff" }}>
+                Chart <span style={{ color: "#00e5a0" }}>Patterns</span>
+              </div>
+              <div style={{ fontSize: "13px", color: "#555" }}>Click any pattern to view full details</div>
+            </div>
+
+            {/* Pattern Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+              {CHART_PATTERNS.map((pattern) => (
+                <div
+                  key={pattern.id}
+                  onClick={() => setSelectedPattern(pattern)}
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: "12px", padding: "16px",
+                    cursor: "pointer", transition: "all 0.2s"
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(0,229,160,0.3)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"}
+                >
+                  <div style={{ fontSize: "28px", marginBottom: "8px" }}>{pattern.emoji}</div>
+                  <div style={{ fontSize: "13px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{pattern.name}</div>
+                  <div style={{
+                    fontSize: "10px", fontFamily: "'JetBrains Mono', monospace",
+                    color: pattern.type.includes("Bullish") ? "#00e5a0" : pattern.type.includes("Bearish") ? "#ff4d72" : "#f0c040",
+                    marginBottom: "6px"
+                  }}>{pattern.type}</div>
+                  <div style={{
+                    fontSize: "10px", color: "#444",
+                    fontFamily: "'JetBrains Mono', monospace"
+                  }}>Reliability: {pattern.reliability}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Fullscreen Pattern Modal */}
+            {selectedPattern && (
+              <div style={{
+                position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                background: "rgba(0,0,0,0.9)", zIndex: 1000,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: "20px"
+              }} onClick={() => setSelectedPattern(null)}>
+                <div style={{
+                  background: "#0a0a14", border: "1px solid rgba(0,229,160,0.3)",
+                  borderRadius: "20px", padding: "40px", maxWidth: "600px", width: "100%"
+                }} onClick={e => e.stopPropagation()}>
+                  <div style={{ fontSize: "60px", textAlign: "center", marginBottom: "16px" }}>{selectedPattern.emoji}</div>
+                  <div style={{ fontSize: "24px", fontWeight: "800", color: "#fff", textAlign: "center", marginBottom: "8px" }}>{selectedPattern.name}</div>
+                  <div style={{
+                    fontSize: "13px", fontFamily: "'JetBrains Mono', monospace", textAlign: "center",
+                    color: selectedPattern.type.includes("Bullish") ? "#00e5a0" : selectedPattern.type.includes("Bearish") ? "#ff4d72" : "#f0c040",
+                    marginBottom: "20px"
+                  }}>{selectedPattern.type}</div>
+                  <div style={{ fontSize: "15px", color: "#b0b0c0", lineHeight: "1.8", marginBottom: "20px", textAlign: "center" }}>
+                    {selectedPattern.description}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+                    {[
+                      { label: "Pattern Type", value: selectedPattern.type },
+                      { label: "Reliability", value: selectedPattern.reliability },
+                      { label: "Signal", value: selectedPattern.type.includes("Bullish") ? "BUY" : selectedPattern.type.includes("Bearish") ? "SELL" : "WATCH" },
+                      { label: "Timeframe", value: "All timeframes" },
+                    ].map(item => (
+                      <div key={item.label} style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "12px" }}>
+                        <div style={{ fontSize: "10px", color: "#444", fontFamily: "'JetBrains Mono', monospace", marginBottom: "4px" }}>{item.label}</div>
+                        <div style={{ fontSize: "14px", fontWeight: "700", color: "#fff" }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => setSelectedPattern(null)} style={{
+                    width: "100%", background: "rgba(0,229,160,0.1)",
+                    border: "1px solid rgba(0,229,160,0.3)", borderRadius: "10px",
+                    padding: "12px", color: "#00e5a0", fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: "13px", fontWeight: "700", cursor: "pointer"
+                  }}>Close ✕</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* JOURNAL PAGE */}
+        {activePage === "journal" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+              <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff" }}>
+                Trade <span style={{ color: "#a78bfa" }}>Journal</span>
+              </div>
+            </div>
+            <div style={{
+              background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.2)",
+              borderRadius: "12px", padding: "16px", marginBottom: "20px"
+            }}>
+              <div style={{ fontSize: "13px", color: "#a78bfa", fontWeight: "600", marginBottom: "8px" }}>📓 What is the Trade Journal?</div>
+              <div style={{ fontSize: "12px", color: "#888", lineHeight: "1.7" }}>
+                The Trade Journal helps you track every trade you make — entry price, exit price, profit/loss, and your reasoning.
+                Over time it shows your win rate, best trades, worst trades, and patterns in your trading behavior.
+                Professional traders use journals to improve their strategy and avoid repeating mistakes.
+              </div>
+            </div>
+
+            {/* Journal Stats */}
+            {journal.length > 0 && (() => {
+              const stats = getJournalStats();
+              return (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "20px" }}>
+                  {[
+                    { label: "Win Rate", value: stats.winRate + "%", color: parseFloat(stats.winRate) >= 60 ? "#00e5a0" : "#ff4d72" },
+                    { label: "Best Trade", value: "+" + stats.bestTrade + "%", color: "#00e5a0" },
+                    { label: "Worst Trade", value: stats.worstTrade + "%", color: "#ff4d72" },
+                    { label: "Total Trades", value: journal.length, color: "#a78bfa" },
+                  ].map((s) => (
+                    <div key={s.label} style={{ background: "rgba(0,0,0,0.2)", borderRadius: "8px", padding: "16px", textAlign: "center" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: "11px", color: "#444", marginTop: "6px", letterSpacing: "1px" }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Add Trade Button */}
+            <button onClick={() => setShowJournal(!showJournal)} style={{
+              background: showJournal ? "rgba(167,139,250,0.1)" : "linear-gradient(135deg, #a78bfa, #7c3aed)",
+              border: "1px solid rgba(167,139,250,0.4)", borderRadius: "10px",
+              padding: "10px 20px", color: "#fff", fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: "13px", fontWeight: "700", cursor: "pointer", marginBottom: "16px"
+            }}>
+              {showJournal ? "− Close Form" : "+ Add New Trade"}
+            </button>
+
+            {/* Add Trade Form */}
+            {showJournal && (
+              <div style={{ background: "rgba(167,139,250,0.04)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "10px", padding: "16px", marginBottom: "16px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px", fontWeight: "600" }}>📝 New Trade Entry</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  {[
+                    { label: "Coin", type: "select" },
+                    { label: "Type", type: "typeSelect" },
+                    { label: "Entry Price ($)", key: "entry", placeholder: "63500" },
+                    { label: "Exit Price ($)", key: "exit", placeholder: "65000" },
+                  ].map((f) => (
+                    <div key={f.label}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>{f.label}</div>
+                      {f.type === "select" ? (
+                        <select value={journalEntry.coin || selected.symbol} onChange={(e) => setJournalEntry({ ...journalEntry, coin: e.target.value })}
+                          style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none" }}>
+                          {COINS.map(c => <option key={c.symbol} value={c.symbol} style={{ background: "#0a0a0f" }}>{c.symbol}</option>)}
+                        </select>
+                      ) : f.type === "typeSelect" ? (
+                        <select value={journalEntry.type} onChange={(e) => setJournalEntry({ ...journalEntry, type: e.target.value })}
+                          style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: journalEntry.type === "LONG" ? "#00e5a0" : "#ff4d72", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none" }}>
+                          <option value="LONG" style={{ background: "#0a0a0f", color: "#00e5a0" }}>LONG</option>
+                          <option value="SHORT" style={{ background: "#0a0a0f", color: "#ff4d72" }}>SHORT</option>
+                        </select>
+                      ) : (
+                        <input type="number" placeholder={f.placeholder} value={journalEntry[f.key]}
+                          onChange={(e) => setJournalEntry({ ...journalEntry, [f.key]: e.target.value })}
+                          style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none" }} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Reason</div>
+                    <input type="text" placeholder="e.g. AI signal BUY, breakout above resistance" value={journalEntry.reason}
+                      onChange={(e) => setJournalEntry({ ...journalEntry, reason: e.target.value })}
+                      style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", outline: "none" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Notes</div>
+                    <input type="text" placeholder="e.g. Should have waited for confirmation" value={journalEntry.notes}
+                      onChange={(e) => setJournalEntry({ ...journalEntry, notes: e.target.value })}
+                      style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", outline: "none" }} />
+                  </div>
+                </div>
+                <button onClick={saveJournalEntry} style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#fff", border: "none", borderRadius: "8px", padding: "10px 20px", fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", fontWeight: "700", cursor: "pointer" }}>
+                  💾 Save Trade
+                </button>
+              </div>
+            )}
+
+            {/* Journal Entries */}
+            {journal.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {journal.map((entry) => (
+                  <div key={entry.id} style={{
+                    background: "rgba(0,0,0,0.2)",
+                    border: "1px solid " + (entry.result === "win" ? "rgba(0,229,160,0.2)" : "rgba(255,77,114,0.2)"),
+                    borderLeft: "3px solid " + (entry.result === "win" ? "#00e5a0" : "#ff4d72"),
+                    borderRadius: "8px", padding: "14px"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", fontWeight: "700", color: entry.type === "LONG" ? "#00e5a0" : "#ff4d72" }}>{entry.type}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: "#888" }}>{entry.coin}</span>
+                        <span style={{ fontSize: "11px", color: "#444" }}>{new Date(entry.timestamp).toLocaleDateString()}</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "16px", fontWeight: "700", color: entry.result === "win" ? "#00e5a0" : "#ff4d72" }}>
+                          {parseFloat(entry.pnl) > 0 ? "+" : ""}{entry.pnl}%
+                        </span>
+                        <button onClick={() => deleteJournalEntry(entry.id)} style={{ background: "transparent", border: "none", color: "#333", cursor: "pointer", fontSize: "14px" }}>🗑️</button>
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                      {[
+                        { label: "Entry", value: "$" + entry.entry?.toLocaleString() },
+                        { label: "Exit", value: "$" + entry.exit?.toLocaleString() },
+                        { label: "P&L", value: (parseFloat(entry.pnl) > 0 ? "+" : "") + entry.pnl + "%" },
+                      ].map((item) => (
+                        <div key={item.label}>
+                          <div style={{ fontSize: "10px", color: "#444", marginBottom: "2px", fontFamily: "'JetBrains Mono', monospace" }}>{item.label}</div>
+                          <div style={{ fontSize: "13px", color: "#c0c0d0", fontFamily: "'JetBrains Mono', monospace", fontWeight: "600" }}>{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {entry.reason && <div style={{ fontSize: "11px", color: "#666", marginTop: "6px" }}><span style={{ color: "#444" }}>Reason: </span>{entry.reason}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: "40px", color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
+                No trades yet. Click "+ Add New Trade" to start!
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PORTFOLIO PAGE */}
+        {activePage === "portfolio" && (() => {
+          const coinUsage = {};
+          journal.forEach(j => { coinUsage[j.coin] = (coinUsage[j.coin] || 0) + 1; });
+          const topCoins = Object.entries(coinUsage).sort((a, b) => b[1] - a[1]);
+          const wins = journal.filter(j => j.result === "win");
+          const losses = journal.filter(j => j.result === "loss");
+          const totalPnl = journal.reduce((sum, j) => sum + parseFloat(j.pnl || 0), 0);
+          const avgPnl = journal.length > 0 ? (totalPnl / journal.length).toFixed(2) : 0;
+          const winRate = journal.length > 0 ? ((wins.length / journal.length) * 100).toFixed(1) : 0;
+          const longTrades = journal.filter(j => j.type === "LONG");
+          const shortTrades = journal.filter(j => j.type === "SHORT");
+
+          return (
+            <div style={{ padding: "20px" }}>
+              <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "24px" }}>
+                Portfolio <span style={{ color: "#60a5fa" }}>Analytics</span>
+              </div>
+
+              {journal.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px", color: "#333", fontFamily: "'JetBrains Mono', monospace" }}>
+                  No trades yet. Add trades in Journal to see portfolio analytics.
+                </div>
+              ) : (
+                <>
+                  {/* Key Stats */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "20px" }}>
+                    {[
+                      { label: "Total Trades", value: journal.length, color: "#60a5fa" },
+                      { label: "Win Rate", value: winRate + "%", color: parseFloat(winRate) >= 60 ? "#00e5a0" : "#ff4d72" },
+                      { label: "Total P&L", value: (totalPnl >= 0 ? "+" : "") + totalPnl.toFixed(2) + "%", color: totalPnl >= 0 ? "#00e5a0" : "#ff4d72" },
+                      { label: "Avg P&L", value: (parseFloat(avgPnl) >= 0 ? "+" : "") + avgPnl + "%", color: parseFloat(avgPnl) >= 0 ? "#00e5a0" : "#ff4d72" },
+                    ].map(s => (
+                      <div key={s.label} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px", textAlign: "center" }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "28px", fontWeight: "700", color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize: "11px", color: "#444", marginTop: "6px", letterSpacing: "1px" }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    {/* Most Traded Coins */}
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>🪙 Most Traded Coins</div>
+                      {topCoins.slice(0, 5).map(([coin, count]) => (
+                        <div key={coin} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", fontWeight: "700", color: "#fff" }}>{coin}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "80px", height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: (count / journal.length * 100) + "%", background: "#00e5a0", borderRadius: "2px" }} />
+                            </div>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#00e5a0" }}>{count} trades</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Trade Breakdown */}
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>📊 Trade Breakdown</div>
+                      {[
+                        { label: "Winning Trades", value: wins.length, color: "#00e5a0", pct: (wins.length / journal.length * 100).toFixed(0) },
+                        { label: "Losing Trades", value: losses.length, color: "#ff4d72", pct: (losses.length / journal.length * 100).toFixed(0) },
+                        { label: "Long Trades", value: longTrades.length, color: "#60a5fa", pct: (longTrades.length / journal.length * 100).toFixed(0) },
+                        { label: "Short Trades", value: shortTrades.length, color: "#a78bfa", pct: (shortTrades.length / journal.length * 100).toFixed(0) },
+                      ].map(item => (
+                        <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                          <span style={{ fontSize: "12px", color: "#888" }}>{item.label}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", fontWeight: "700", color: item.color }}>{item.value}</span>
+                            <span style={{ fontSize: "10px", color: "#444" }}>({item.pct}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Best & Worst Trades */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <div style={{ background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>🏆 Best Trade</div>
+                      {wins.length > 0 ? (() => {
+                        const best = wins.reduce((a, b) => parseFloat(a.pnl) > parseFloat(b.pnl) ? a : b);
+                        return (
+                          <>
+                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "28px", fontWeight: "700", color: "#00e5a0" }}>+{best.pnl}%</div>
+                            <div style={{ fontSize: "12px", color: "#555", marginTop: "4px" }}>{best.coin} · {best.type} · {new Date(best.timestamp).toLocaleDateString()}</div>
+                          </>
+                        );
+                      })() : <div style={{ color: "#333", fontSize: "12px" }}>No winning trades yet</div>}
+                    </div>
+                    <div style={{ background: "rgba(255,77,114,0.04)", border: "1px solid rgba(255,77,114,0.15)", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#ff4d72", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>📉 Worst Trade</div>
+                      {losses.length > 0 ? (() => {
+                        const worst = losses.reduce((a, b) => parseFloat(a.pnl) < parseFloat(b.pnl) ? a : b);
+                        return (
+                          <>
+                            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "28px", fontWeight: "700", color: "#ff4d72" }}>{worst.pnl}%</div>
+                            <div style={{ fontSize: "12px", color: "#555", marginTop: "4px" }}>{worst.coin} · {worst.type} · {new Date(worst.timestamp).toLocaleDateString()}</div>
+                          </>
+                        );
+                      })() : <div style={{ color: "#333", fontSize: "12px" }}>No losing trades yet</div>}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* SETTINGS PAGE */}
+        {activePage === "settings" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "24px" }}>
+              ⚙️ <span style={{ color: "#00e5a0" }}>Settings</span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+              {/* App Info */}
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>App Info</div>
+                {[
+                  { label: "App Name", value: "CryptoMind Pro" },
+                  { label: "Version", value: "v2.0" },
+                  { label: "AI Model", value: "openai/gpt-oss-20b" },
+                  { label: "Price Source", value: "Binance WebSocket (Real-time)" },
+                  { label: "Chart Data", value: "CoinGecko API" },
+                  { label: "AI Engine", value: "Groq Cloud" },
+                ].map(item => (
+                  <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    <span style={{ fontSize: "13px", color: "#666" }}>{item.label}</span>
+                    <span style={{ fontSize: "13px", color: "#e8e8f0", fontFamily: "'JetBrains Mono', monospace" }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Data Management */}
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>Data Management</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {[
+                    { label: "Clear Predictions", desc: "Delete all saved predictions", color: "#f0c040", action: () => { clearPredictions(); alert("Predictions cleared!"); } },
+                    { label: "Clear Trade Journal", desc: "Delete all journal entries", color: "#ff4d72", action: () => { localStorage.removeItem("cryptomind_journal"); setJournal([]); alert("Journal cleared!"); } },
+                    { label: "Clear AI Memory", desc: "Reset AI committee memory", color: "#a78bfa", action: () => { localStorage.removeItem("cryptomind_memory"); setAiMemory([]); alert("AI Memory cleared!"); } },
+                    { label: "Clear All Data", desc: "Reset everything to default", color: "#ff4d72", action: () => { if(confirm("Clear ALL data? This cannot be undone!")) { localStorage.clear(); setPredictions([]); setJournal([]); setAiMemory([]); alert("All data cleared!"); } } },
+                  ].map(item => (
+                    <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "rgba(0,0,0,0.2)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontSize: "13px", color: "#e8e8f0", marginBottom: "2px" }}>{item.label}</div>
+                        <div style={{ fontSize: "11px", color: "#444" }}>{item.desc}</div>
+                      </div>
+                      <button onClick={item.action} style={{
+                        background: "transparent", border: "1px solid " + item.color + "44",
+                        borderRadius: "6px", padding: "6px 14px", color: item.color,
+                        fontFamily: "'JetBrains Mono', monospace", fontSize: "11px",
+                        fontWeight: "700", cursor: "pointer"
+                      }}>Clear</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* About */}
+              <div style={{ background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "12px", padding: "20px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px" }}>About CryptoMind Pro</div>
+                <div style={{ fontSize: "12px", color: "#888", lineHeight: "1.7" }}>
+                  CryptoMind Pro is an AI-powered crypto market analyzer built with React, Groq AI, and Binance WebSocket.
+                  It features 8 AI trader agents that debate live market data to give you professional trading signals.
+                  Built for educational purposes only. Not financial advice.
+                </div>
+                <div style={{ marginTop: "12px", fontSize: "11px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>
+                  Built by Logesh · GitHub: logesh120627
+                </div>
+              </div>
+
             </div>
           </div>
         )}
