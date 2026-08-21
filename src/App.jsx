@@ -1345,8 +1345,13 @@ WHY_NOT_100:
     const entry = parseFloat(entryPrice);
     const sl = parseFloat(stopLoss);
     const tp = parseFloat(takeProfit);
+    if (![entry, sl, tp].every(Number.isFinite) || entry <= 0 || sl <= 0 || tp <= 0) {
+      return null;
+    }
     const cap = parseFloat(capital) || 1000;
     const risk = Math.abs(entry - sl);
+    if (risk === 0) return null;
+
     const reward = Math.abs(tp - entry);
     const rrRatio = (reward / risk).toFixed(2);
     const posSize = (cap * 0.01 / risk).toFixed(4);
@@ -1751,7 +1756,7 @@ function savePrediction() {
             <div className="overview-grid">
               {[
                 {
-                  label: "T{/* MARKETotal Market Cap",
+                  label: "Total Market Cap",
                   value: marketOverview.totalMarketCap >= 1e12
                     ? "$" + (marketOverview.totalMarketCap / 1e12).toFixed(2) + "T"
                     : marketOverview.totalMarketCap
@@ -4537,8 +4542,10 @@ function savePrediction() {
         </div>
         )}
         </div>
+        )}
         </div>
-      </div>
-   </>
+        </div>
+        </div>
+    </>
   );
 }
