@@ -4525,7 +4525,7 @@ function savePrediction() {
             </div>
           )}
 
-                    {/* Note */}
+          {/* Note */}
           <div style={{
             marginTop: "12px", padding: "10px", background: "#0a0a0f", borderRadius: "8px",
             fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444", lineHeight: "1.6"
@@ -4539,7 +4539,6 @@ function savePrediction() {
         </div>
         </div>
       </div>
-    </div>
    </>
   );
 }
