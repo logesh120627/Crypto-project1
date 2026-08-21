@@ -10,12 +10,12 @@ const COINS = [
   { id: "cardano", symbol: "ADA", name: "Cardano", binance: "ADAUSDT" },
   { id: "avalanche-2", symbol: "AVAX", name: "Avalanche", binance: "AVAXUSDT" },
   { id: "chainlink", symbol: "LINK", name: "Chainlink", binance: "LINKUSDT" },
-  { id: "polkadot", symbol: "DOT", name: "Polkadot", binance: "DOTUSDT" },
   { id: "litecoin", symbol: "LTC", name: "Litecoin", binance: "LTCUSDT" },
   { id: "tron", symbol: "TRX", name: "TRON", binance: "TRXUSDT" },
   { id: "matic-network", symbol: "POL", name: "Polygon", binance: "POLUSDT" },
   { id: "sui", symbol: "SUI", name: "Sui", binance: "SUIUSDT" },
   { id: "aptos", symbol: "APT", name: "Aptos", binance: "APTUSDT" },
+  { id: "portal-2", symbol: "PORTAL", name: "Portal", binance: "PORTALUSDT" },
 ];
 
 const STYLES = `
@@ -1641,8 +1641,9 @@ function savePrediction() {
   ];
 
   const [selectedPattern, setSelectedPattern] = useState(null);
-    const NAV_ITEMS = [
+      const NAV_ITEMS = [
     { id: "dashboard", icon: "📊", label: "Dashboard" },
+    { id: "analyzer", icon: "🔍", label: "Analyzer" },
     { id: "chat", icon: "💬", label: "AI Chat" },
     { id: "debate", icon: "🤖", label: "AI Debate" },
     { id: "patterns", icon: "📈", label: "Chart Patterns" },
@@ -1700,7 +1701,7 @@ function savePrediction() {
         <div className={`main-content ${sidebarOpen ? "" : "collapsed"}`}>
         <div className="app">
         
-        {/* MARKET OVERVIEW PAGE */}
+        {/* OVERVIEW PAGE */}
         {activePage === "dashboard" && (
           <div style={{ padding: "20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
@@ -1750,7 +1751,7 @@ function savePrediction() {
             <div className="overview-grid">
               {[
                 {
-                  label: "Total Market Cap",
+                  label: "T{/* MARKETotal Market Cap",
                   value: marketOverview.totalMarketCap >= 1e12
                     ? "$" + (marketOverview.totalMarketCap / 1e12).toFixed(2) + "T"
                     : marketOverview.totalMarketCap
@@ -1843,6 +1844,179 @@ function savePrediction() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI CHAT PAGE */}
+        {activePage === "chat" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "20px" }}>
+              💬 AI <span style={{ color: "#00e5a0" }}>Chat</span>
+            </div>
+            <div className="ai-panel">
+              <div className="ai-panel-header">
+                <div className="ai-badge">AI CHAT</div>
+                <div className="ai-panel-title">CryptoMind AI — {selected.name}</div>
+                <button onClick={() => setChatHistory([])} style={{
+                  marginLeft: "auto", background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px",
+                  padding: "4px 10px", color: "#444", fontSize: "11px",
+                  fontFamily: "'JetBrains Mono', monospace", cursor: "pointer"
+                }}>Clear Chat</button>
+              </div>
+              <div className="quick-btns">
+                {QUICK_QUESTIONS.map((q) => (
+                  <button key={q} className="quick-btn" onClick={() => sendChatMessage(q)}>{q}</button>
+                ))}
+              </div>
+              <div style={{
+                background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "10px", padding: "14px", minHeight: "400px", maxHeight: "600px",
+                overflowY: "auto", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "12px"
+              }}>
+                {chatHistory.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "#2a2a3a", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", margin: "auto" }}>
+                    Ask anything about {selected.symbol} — powered by AI
+                  </div>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", gap: "10px", alignItems: "flex-start" }}>
+                      <div style={{
+                        width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
+                        background: msg.role === "user" ? "rgba(0,229,160,0.2)" : "rgba(167,139,250,0.2)",
+                        border: "1px solid " + (msg.role === "user" ? "rgba(0,229,160,0.3)" : "rgba(167,139,250,0.3)"),
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px"
+                      }}>{msg.role === "user" ? "👤" : "🤖"}</div>
+                      <div style={{
+                        maxWidth: "80%",
+                        background: msg.role === "user" ? "rgba(0,229,160,0.08)" : "rgba(167,139,250,0.08)",
+                        border: "1px solid " + (msg.role === "user" ? "rgba(0,229,160,0.15)" : "rgba(167,139,250,0.15)"),
+                        borderRadius: msg.role === "user" ? "12px 12px 0 12px" : "12px 12px 12px 0",
+                        padding: "10px 14px"
+                      }}>
+                        <div style={{ fontSize: "13px", color: msg.role === "user" ? "#c0c0d0" : "#b0b0c0", lineHeight: "1.7", whiteSpace: "pre-wrap" }}>{msg.content}</div>
+                        <div style={{ fontSize: "10px", color: "#333", marginTop: "4px", fontFamily: "'JetBrains Mono', monospace" }}>{msg.time}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {aiLoading && (
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "rgba(167,139,250,0.2)", border: "1px solid rgba(167,139,250,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px" }}>🤖</div>
+                    <div style={{ background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "12px 12px 12px 0", padding: "10px 14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div className="typing-dots"><span /><span /><span /></div>
+                      <span style={{ fontSize: "12px", color: "#555" }}>Analyzing...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="ai-prompt-row">
+                <input className="ai-input" placeholder={`Ask about ${selected.symbol}...`}
+                  value={question} onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendChatMessage(question)} />
+                <button className="ai-btn" disabled={aiLoading || !question.trim()} onClick={() => sendChatMessage(question)}>
+                  {aiLoading ? "…" : "Send →"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI DEBATE PAGE */}
+        {activePage === "debate" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "8px" }}>
+              🤖 AI <span style={{ color: "#a78bfa" }}>Debate</span>
+            </div>
+            <div style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "12px", padding: "16px", marginBottom: "20px" }}>
+              <div style={{ fontSize: "13px", color: "#a78bfa", fontWeight: "600", marginBottom: "8px" }}>🤖 What is AI Debate?</div>
+              <div style={{ fontSize: "12px", color: "#888", lineHeight: "1.7" }}>
+                8 specialized AI traders analyze live market data from different perspectives and debate the best trading direction.
+                Click <strong style={{ color: "#a78bfa" }}>Start Debate</strong> to begin. Each agent gives their analysis, then the
+                AI Committee gives a final verdict with SIGNAL, ENTRY, TARGET, STOP LOSS, LEVERAGE and CONFIDENCE score.
+                Use <strong style={{ color: "#00e5a0" }}>⬇️ Use AI Values</strong> to auto-fill the Trade Calculator.
+              </div>
+            </div>
+
+            {/* Debate Panel */}
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", fontWeight: "600", color: "#a78bfa", background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.3)", padding: "3px 8px", borderRadius: "6px", letterSpacing: "1px" }}>MULTI-AGENT</div>
+                  <div style={{ fontSize: "14px", fontWeight: "600", color: "#e8e8f0" }}>AI Trader Debate — {selected.symbol}</div>
+                </div>
+                <button onClick={runAgentDebate} disabled={agentLoading} style={{
+                  background: agentLoading ? "rgba(255,255,255,0.03)" : "linear-gradient(135deg, #a78bfa, #7c3aed)",
+                  color: agentLoading ? "#555" : "#fff", border: "none", borderRadius: "8px",
+                  padding: "10px 20px", fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: "13px", fontWeight: "700", cursor: agentLoading ? "not-allowed" : "pointer"
+                }}>
+                  {agentLoading ? "Debating…" : "🗣️ Start Debate"}
+                </button>
+              </div>
+
+              {/* Timeframe */}
+              <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                {["15m", "1h", "4h", "1D", "1W"].map((tf) => (
+                  <button key={tf} onClick={() => { setTimeframe(tf); fetchKlines(selected.binance, tf); }} style={{
+                    background: timeframe === tf ? "rgba(0,229,160,0.1)" : "rgba(255,255,255,0.03)",
+                    border: timeframe === tf ? "1px solid #00e5a0" : "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: "8px", padding: "6px 14px",
+                    fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", fontWeight: "600",
+                    color: timeframe === tf ? "#00e5a0" : "#555", cursor: "pointer"
+                  }}>{tf}</button>
+                ))}
+              </div>
+
+              {/* Agent Cards */}
+              {debateStarted && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+                  {AGENTS.map((agent) => (
+                    <div key={agent.id} style={{
+                      background: "rgba(0,0,0,0.2)", border: "1px solid " + agent.color + "33",
+                      borderLeft: "3px solid " + agent.color, borderRadius: "8px", padding: "14px"
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "16px" }}>{agent.emoji}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", fontWeight: "600", color: agent.color, textTransform: "uppercase", letterSpacing: "1px" }}>{agent.name}</span>
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#b0b0c0", lineHeight: "1.7" }}>
+                        {agentResponses[agent.id] ? agentResponses[agent.id] : (
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#444" }}>
+                            <div className="typing-dots"><span /><span /><span /></div>
+                            <span>Analyzing…</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!debateStarted && (
+                <div style={{ textAlign: "center", padding: "40px", color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
+                  Click "Start Debate" to get analysis from 8 AI traders
+                </div>
+              )}
+
+              {/* Consensus */}
+              {consensus && (
+                <div style={{ background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "10px", padding: "16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px", fontWeight: "600" }}>⚖️ AI Committee Consensus</div>
+                    <button onClick={extractAIValues} style={{
+                      background: "#00e5a0", color: "#0a0a0f", border: "none", borderRadius: "6px",
+                      padding: "6px 14px", fontFamily: "'Space Grotesk', sans-serif",
+                      fontSize: "12px", fontWeight: "700", cursor: "pointer"
+                    }}>⬇️ Use AI Values in Calculator</button>
+                  </div>
+                  {/* Consensus display - same as analyzer */}
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", color: "#c0c0d0", lineHeight: "1.8", whiteSpace: "pre-line" }}>
+                    {consensus}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2264,7 +2438,7 @@ function savePrediction() {
         )}
         
         {/* MAIN ANALYZER */}
-        {activePage !== "dashboard" && (
+        {activePage === "analyzer" && (
         <div>
         {/* Header */}
         <div className="header">
@@ -2292,185 +2466,539 @@ function savePrediction() {
           </div>
         </div>
 
-        {/* Coin Tabs */}
+                {/* Coin Tabs */}
+        {(activePage === "analyzer" || activePage === "dashboard") && (
         <div className="coin-tabs">
           {COINS.map((c) => (
             <button
               key={c.id}
               className={`coin-tab ${selected.id === c.id ? "active" : ""}`}
-              onClick={() => { setSelected(c); setAiResponse(""); setQuestion(""); }}
+              onClick={() => { setSelected(c); setAiResponse(""); setQuestion(""); setActivePage("analyzer"); }}
             >
               {c.symbol}
             </button>
           ))}
         </div>
+        )}
 
-        {/* Market Type Switch + Price Card */}
-        <div style={{
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: "14px", padding: "20px", marginBottom: "20px"
-        }}>
-          {/* Market Switch */}
-          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-            {[
-              { id: "spot", label: "🟢 Spot", color: "#00e5a0" },
-              { id: "futures", label: "🟣 Futures", color: "#a78bfa" },
-              { id: "compare", label: "⚖️ Compare", color: "#f0c040" },
-            ].map((t) => (
-              <button key={t.id} onClick={() => setMarketType(t.id)} style={{
-                background: marketType === t.id ? t.color + "15" : "rgba(255,255,255,0.03)",
-                border: "1px solid " + (marketType === t.id ? t.color : "rgba(255,255,255,0.08)"),
-                borderRadius: "8px", padding: "8px 16px",
-                color: marketType === t.id ? t.color : "#555",
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: "12px", fontWeight: "600", cursor: "pointer",
-                transition: "all 0.2s"
-              }}>{t.label}</button>
-            ))}
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "6px" }}>
-              <div style={{
-                width: "6px", height: "6px", borderRadius: "50%",
-                background: wsConnected ? "#00e5a0" : "#ff4d72",
-                boxShadow: wsConnected ? "0 0 8px #00e5a0" : "none",
-                animation: "pulse 2s infinite"
-              }} />
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444" }}>
-                {lastUpdated ? `Updated ${((Date.now() - lastUpdated) / 1000).toFixed(1)}s ago` : "Connecting..."}
-              </span>
+        {/* ── DASHBOARD PAGE ── */}
+        {activePage === "dashboard" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+              <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff" }}>
+                Market <span style={{ color: "#00e5a0" }}>Overview</span>
+              </div>
+              <div style={{ marginLeft: "auto", fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", background: "rgba(0,229,160,0.1)", border: "1px solid rgba(0,229,160,0.2)", padding: "3px 10px", borderRadius: "20px" }}>LIVE</div>
+            </div>
+
+            {/* Fear & Greed */}
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "20px", marginBottom: "16px" }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>😨 Fear & Greed Index</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+                <div style={{
+                  width: "80px", height: "80px", borderRadius: "50%", flexShrink: 0,
+                  background: `conic-gradient(${parseInt(marketOverview.fearGreedValue) <= 25 ? "#ff4d72" : parseInt(marketOverview.fearGreedValue) <= 50 ? "#f0c040" : parseInt(marketOverview.fearGreedValue) <= 75 ? "#60a5fa" : "#00e5a0"} ${parseInt(marketOverview.fearGreedValue) * 3.6}deg, rgba(255,255,255,0.05) 0deg)`,
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}>
+                  <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#050508", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "18px", fontWeight: "700", color: "#fff" }}>{marketOverview.fearGreedValue || "—"}</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "24px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{marketOverview.fearGreedLabel || "Loading..."}</div>
+                  <div style={{ fontSize: "12px", color: "#555", marginBottom: "10px" }}>
+                    {parseInt(marketOverview.fearGreedValue) <= 25 ? "🔴 Extreme Fear — possible buy opportunity" :
+                     parseInt(marketOverview.fearGreedValue) <= 50 ? "🟡 Fear — market cautious" :
+                     parseInt(marketOverview.fearGreedValue) <= 75 ? "🟢 Greed — market optimistic" :
+                     "🔥 Extreme Greed — consider taking profits"}
+                  </div>
+                  <div className="fear-greed-meter">
+                    <div className="fear-greed-needle" style={{ left: (marketOverview.fearGreedValue || 0) + "%" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#333", fontFamily: "'JetBrains Mono', monospace", marginTop: "4px" }}>
+                    <span>Extreme Fear</span>
+                    <span>Extreme Greed</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Overview Grid */}
+            <div className="overview-grid">
+              {[
+                { label: "Total Market Cap", value: marketOverview.totalMarketCap >= 1e12 ? "$" + (marketOverview.totalMarketCap / 1e12).toFixed(2) + "T" : marketOverview.totalMarketCap ? "$" + (marketOverview.totalMarketCap / 1e9).toFixed(0) + "B" : "—", sub: (parseFloat(marketOverview.marketCapChange) >= 0 ? "+" : "") + (marketOverview.marketCapChange || "0") + "% 24h", color: parseFloat(marketOverview.marketCapChange) >= 0 ? "#00e5a0" : "#ff4d72", icon: "💰" },
+                { label: "BTC Dominance", value: marketOverview.btcDominance ? marketOverview.btcDominance + "%" : "—", sub: "Bitcoin market share", color: "#f0c040", icon: "₿" },
+                { label: "24h Volume", value: marketOverview.totalVolume >= 1e12 ? "$" + (marketOverview.totalVolume / 1e12).toFixed(2) + "T" : marketOverview.totalVolume ? "$" + (marketOverview.totalVolume / 1e9).toFixed(0) + "B" : "—", sub: "Total trading volume", color: "#60a5fa", icon: "📊" },
+                { label: "BTC Funding Rate", value: marketOverview.fundingRate ? marketOverview.fundingRate + "%" : "—", sub: parseFloat(marketOverview.fundingRate) > 0 ? "Longs paying shorts" : "Shorts paying longs", color: parseFloat(marketOverview.fundingRate) > 0 ? "#00e5a0" : "#ff4d72", icon: "💸" },
+                { label: "Active Cryptos", value: marketOverview.activeCryptos?.toLocaleString() || "—", sub: "Listed on CoinGecko", color: "#a78bfa", icon: "🪙" },
+                { label: "Market Sentiment", value: parseInt(marketOverview.fearGreedValue) >= 60 ? "Bullish" : parseInt(marketOverview.fearGreedValue) >= 40 ? "Neutral" : "Bearish", sub: "Based on Fear & Greed", color: parseInt(marketOverview.fearGreedValue) >= 60 ? "#00e5a0" : parseInt(marketOverview.fearGreedValue) >= 40 ? "#f0c040" : "#ff4d72", icon: "🧭" },
+              ].map((item) => (
+                <div key={item.label} className="overview-card">
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "20px" }}>{item.icon}</span>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px" }}>{item.label}</div>
+                  </div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: item.color, marginBottom: "4px" }}>{item.value}</div>
+                  <div style={{ fontSize: "11px", color: "#444" }}>{item.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick Prices */}
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "20px", marginTop: "16px" }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>📈 Quick Prices</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "10px" }}>
+                {COINS.slice(0, 10).map((c) => {
+                  const coinD = marketData[c.id];
+                  const change = coinD?.price_change_percentage_24h ?? 0;
+                  return (
+                    <div key={c.id} onClick={() => { setActivePage("analyzer"); setSelected(c); }}
+                      style={{ background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.04)", borderRadius: "8px", padding: "10px", cursor: "pointer", textAlign: "center", transition: "all 0.2s" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{c.symbol}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#888", marginBottom: "4px" }}>
+                        {coinD ? "$" + (coinD.current_price >= 1 ? coinD.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : coinD.current_price?.toFixed(4)) : "—"}
+                      </div>
+                      <div style={{ fontSize: "10px", color: change >= 0 ? "#00e5a0" : "#ff4d72", fontFamily: "'JetBrains Mono', monospace" }}>
+                        {change >= 0 ? "▲" : "▼"} {Math.abs(change).toFixed(2)}%
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
+        )}
 
-          {/* SPOT MODE */}
-          {marketType === "spot" && (
-            <div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
-                {selected.symbol}/USDT — SPOT · Binance
+        {/* ── AI CHAT PAGE ── */}
+        {activePage === "chat" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "20px" }}>
+              💬 AI <span style={{ color: "#00e5a0" }}>Chat</span>
+            </div>
+            <div className="ai-panel">
+              <div className="ai-panel-header">
+                <div className="ai-badge">AI CHAT</div>
+                <div className="ai-panel-title">CryptoMind AI — {selected.name}</div>
+                <button onClick={() => setChatHistory([])} style={{ marginLeft: "auto", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "4px 10px", color: "#444", fontSize: "11px", fontFamily: "'JetBrains Mono', monospace", cursor: "pointer" }}>Clear Chat</button>
               </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#fff", letterSpacing: "-2px" }}>
-                  ${spotPrice ? spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : coin?.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "—"}
-                </div>
-                {coin && (
-                  <div style={{
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", fontWeight: "600",
-                    padding: "4px 12px", borderRadius: "8px",
-                    background: isUp ? "rgba(0,229,160,0.12)" : "rgba(255,77,114,0.12)",
-                    color: isUp ? "#00e5a0" : "#ff4d72",
-                    border: "1px solid " + (isUp ? "rgba(0,229,160,0.2)" : "rgba(255,77,114,0.2)")
-                  }}>
-                    {isUp ? "▲" : "▼"} {Math.abs(change24h).toFixed(2)}% 24h
+              <div className="quick-btns">
+                {QUICK_QUESTIONS.map((q) => (
+                  <button key={q} className="quick-btn" onClick={() => sendChatMessage(q)}>{q}</button>
+                ))}
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", padding: "14px", minHeight: "400px", maxHeight: "600px", overflowY: "auto", marginBottom: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                {chatHistory.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "#2a2a3a", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", margin: "auto" }}>
+                    Ask anything about {selected.symbol} — powered by AI
+                  </div>
+                ) : (
+                  chatHistory.map((msg, i) => (
+                    <div key={i} style={{ display: "flex", flexDirection: msg.role === "user" ? "row-reverse" : "row", gap: "10px", alignItems: "flex-start" }}>
+                      <div style={{ width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0, background: msg.role === "user" ? "rgba(0,229,160,0.2)" : "rgba(167,139,250,0.2)", border: "1px solid " + (msg.role === "user" ? "rgba(0,229,160,0.3)" : "rgba(167,139,250,0.3)"), display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px" }}>
+                        {msg.role === "user" ? "👤" : "🤖"}
+                      </div>
+                      <div style={{ maxWidth: "80%", background: msg.role === "user" ? "rgba(0,229,160,0.08)" : "rgba(167,139,250,0.08)", border: "1px solid " + (msg.role === "user" ? "rgba(0,229,160,0.15)" : "rgba(167,139,250,0.15)"), borderRadius: msg.role === "user" ? "12px 12px 0 12px" : "12px 12px 12px 0", padding: "10px 14px" }}>
+                        <div style={{ fontSize: "13px", color: msg.role === "user" ? "#c0c0d0" : "#b0b0c0", lineHeight: "1.7", whiteSpace: "pre-wrap" }}>{msg.content}</div>
+                        <div style={{ fontSize: "10px", color: "#333", marginTop: "4px", fontFamily: "'JetBrains Mono', monospace" }}>{msg.time}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {aiLoading && (
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "rgba(167,139,250,0.2)", border: "1px solid rgba(167,139,250,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px" }}>🤖</div>
+                    <div style={{ background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "12px 12px 12px 0", padding: "10px 14px", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div className="typing-dots"><span /><span /><span /></div>
+                      <span style={{ fontSize: "12px", color: "#555" }}>Analyzing...</span>
+                    </div>
                   </div>
                 )}
               </div>
-              <div style={{ fontSize: "11px", color: "#444", marginTop: "6px", fontFamily: "'JetBrains Mono', monospace" }}>
-                SOURCE: Binance Spot
+              <div className="ai-prompt-row">
+                <input className="ai-input" placeholder={`Ask about ${selected.symbol}...`} value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendChatMessage(question)} />
+                <button className="ai-btn" disabled={aiLoading || !question.trim()} onClick={() => sendChatMessage(question)}>{aiLoading ? "…" : "Send →"}</button>
+              </div>
+              {error && <div className="error-msg">{error}</div>}
+            </div>
+          </div>
+        )}
+
+        {/* ── AI DEBATE INFO PAGE ── */}
+        {activePage === "debate" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "8px" }}>
+              🤖 AI <span style={{ color: "#a78bfa" }}>Debate System</span>
+            </div>
+            <div style={{ fontSize: "13px", color: "#555", marginBottom: "24px" }}>
+              Go to <span style={{ color: "#00e5a0", cursor: "pointer" }} onClick={() => setActivePage("analyzer")}>Analyzer</span> → scroll down → click Start Debate to run the debate
+            </div>
+
+            {/* What is AI Debate */}
+            <div style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "14px", padding: "20px", marginBottom: "20px" }}>
+              <div style={{ fontSize: "16px", fontWeight: "700", color: "#a78bfa", marginBottom: "12px" }}>What is AI Debate?</div>
+              <div style={{ fontSize: "13px", color: "#888", lineHeight: "1.8" }}>
+                CryptoMind Pro uses <strong style={{ color: "#fff" }}>8 specialized AI traders</strong> that analyze live Binance market data from completely different perspectives.
+                Each agent debates the market independently, then an <strong style={{ color: "#00e5a0" }}>AI Committee Chair</strong> reviews all opinions and gives a final trading verdict.
+                This multi-agent approach reduces bias and gives you a more balanced, data-driven signal than any single AI analysis.
               </div>
             </div>
-          )}
 
-          {/* FUTURES MODE */}
-          {marketType === "futures" && (
-            <div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
-                {selected.symbol}USDT — PERPETUAL · Binance Futures
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "12px", marginBottom: "16px" }}>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#a78bfa", letterSpacing: "-2px" }}>
-                  {futuresPrice
-                    ? "$" + futuresPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                    : spotPrice
-                    ? "$" + spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                    : coin?.current_price
-                    ? "$" + coin.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                    : "—"}
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+            {/* How to Use */}
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "20px", marginBottom: "20px" }}>
+              <div style={{ fontSize: "16px", fontWeight: "700", color: "#fff", marginBottom: "16px" }}>How to Use</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {[
-                  { label: "Mark Price", value: markPrice ? "$" + markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—", color: "#a78bfa" },
-                  { label: "Index Price", value: indexPrice ? "$" + indexPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—", color: "#60a5fa" },
-                  { label: "Funding Rate", value: fundingRate ? fundingRate.toFixed(4) + "%" : "—", color: fundingRate > 0 ? "#00e5a0" : "#ff4d72" },
-                ].map((item) => (
-                  <div key={item.label} style={{ background: "rgba(0,0,0,0.2)", borderRadius: "8px", padding: "10px" }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444", marginBottom: "4px" }}>{item.label}</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "14px", fontWeight: "700", color: item.color }}>{item.value}</div>
+                  { step: "1", title: "Go to Analyzer", desc: "Click 🔍 Analyzer in the sidebar and select your coin (BTC, ETH, SOL etc.)" },
+                  { step: "2", title: "Select Timeframe", desc: "Choose your trading timeframe — 15m for scalping, 1h for day trading, 4h for swing trading" },
+                  { step: "3", title: "Start Debate", desc: "Click the 🗣️ Start Debate button. All 8 AI agents will analyze live market data." },
+                  { step: "4", title: "Read Agent Opinions", desc: "Each agent gives their perspective. Read all opinions to understand the full market picture." },
+                  { step: "5", title: "Get Final Signal", desc: "The AI Committee gives BUY/SELL/HOLD with Entry, Target, Stop Loss, Leverage and Confidence score." },
+                  { step: "6", title: "Use AI Values", desc: "Click ⬇️ Use AI Values to auto-fill the Trade Calculator with the recommended levels." },
+                ].map((s) => (
+                  <div key={s.step} style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "rgba(0,229,160,0.1)", border: "1px solid rgba(0,229,160,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'JetBrains Mono', monospace", fontSize: "14px", fontWeight: "700", color: "#00e5a0", flexShrink: 0 }}>{s.step}</div>
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{s.title}</div>
+                      <div style={{ fontSize: "12px", color: "#666", lineHeight: "1.6" }}>{s.desc}</div>
+                    </div>
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: "11px", color: "#444", marginTop: "8px", fontFamily: "'JetBrains Mono', monospace" }}>
-                SOURCE: Binance Futures (USDⓈ-M Perpetual)
-              </div>
             </div>
-          )}
 
-          {/* COMPARE MODE */}
-          {marketType === "compare" && (
-            <div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>
-                {selected.symbol} — Spot vs Futures Comparison
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
-                {/* Spot */}
-                <div style={{ background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "10px", padding: "14px" }}>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>🟢 Spot</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: "#fff" }}>
-                    ${spotPrice ? spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
-                  </div>
-                  <div style={{ fontSize: "10px", color: "#444", marginTop: "4px" }}>Binance Spot</div>
-                </div>
-                {/* Futures */}
-                <div style={{ background: "rgba(167,139,250,0.04)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "10px", padding: "14px" }}>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>🟣 Futures</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: "#fff" }}>
-                    ${futuresPrice ? futuresPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
-                  </div>
-                  <div style={{ fontSize: "10px", color: "#444", marginTop: "4px" }}>Binance Futures</div>
-                </div>
-              </div>
-
-              {/* Spread */}
-              {(() => {
-                const sp = spotPrice || coin?.current_price;
-                const fp = futuresPrice || coin?.current_price;
-                const spread = fp - sp;
-                const spreadPct = ((spread / sp) * 100).toFixed(4);
-                return sp && fp ? (
-                <div style={{ background: "rgba(240,192,64,0.06)", border: "1px solid rgba(240,192,64,0.2)", borderRadius: "10px", padding: "14px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {/* AI Agents */}
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "20px" }}>
+              <div style={{ fontSize: "16px", fontWeight: "700", color: "#fff", marginBottom: "16px" }}>Meet Your 8 AI Traders</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {[
+                  { emoji: "🟢", name: "Bull Trader", color: "#00e5a0", desc: "Identifies bullish opportunities and positive market factors. Finds reasons why the price should go UP based on momentum, support levels, and buying pressure." },
+                  { emoji: "🔴", name: "Bear Trader", color: "#ff4d72", desc: "Identifies bearish risks, weaknesses, and potential downside. Finds reasons why the price should go DOWN based on resistance, selling pressure, and bearish signals." },
+                  { emoji: "📊", name: "Technical Analyst", color: "#a78bfa", desc: "Evaluates price action, indicators, trends, support, and resistance. Analyzes chart patterns, moving averages, RSI, and key price levels." },
+                  { emoji: "💭", name: "Sentiment Analyst", color: "#f0c040", desc: "Analyzes market sentiment, news, and investor psychology. Gives a sentiment score 0-100 and explains whether the market mood is fearful or greedy." },
+                  { emoji: "🛡️", name: "Risk Manager", color: "#60a5fa", desc: "Evaluates risk, volatility, position sizing, and potential losses. Recommends stop loss levels and position size as % of portfolio." },
+                  { emoji: "🌍", name: "On-Chain Analyst", color: "#34d399", desc: "Analyzes blockchain indicators like market cap to volume ratio, price momentum, and network activity signals to estimate whale behavior." },
+                  { emoji: "📰", name: "News Analyst", color: "#fb923c", desc: "Analyzes current market news and sentiment. Gives a news sentiment score and identifies key factors driving the market narrative." },
+                  { emoji: "🐋", name: "Whale Tracker", color: "#38bdf8", desc: "Tracks large player (whale) movements. Analyzes volume data and price action to identify whether whales are accumulating or distributing." },
+                ].map((agent) => (
+                  <div key={agent.name} style={{ display: "flex", gap: "14px", alignItems: "flex-start", padding: "14px", background: "rgba(0,0,0,0.2)", borderLeft: "3px solid " + agent.color, borderRadius: "8px" }}>
+                    <span style={{ fontSize: "24px", flexShrink: 0 }}>{agent.emoji}</span>
                     <div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#f0c040", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "1px" }}>Spread (Futures - Spot)</div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: spread >= 0 ? "#00e5a0" : "#ff4d72" }}>
-                        {spread >= 0 ? "+" : ""}${spread.toFixed(2)}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", marginBottom: "4px" }}>Spread %</div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: spreadPct >= 0 ? "#00e5a0" : "#ff4d72" }}>
-                        {spreadPct >= 0 ? "+" : ""}{spreadPct}%
-                      </div>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", fontWeight: "700", color: agent.color, marginBottom: "4px", textTransform: "uppercase", letterSpacing: "1px" }}>{agent.name}</div>
+                      <div style={{ fontSize: "12px", color: "#888", lineHeight: "1.7" }}>{agent.desc}</div>
                     </div>
                   </div>
-                  <div style={{ marginTop: "10px", fontSize: "11px", color: "#555" }}>
-                    {spread > 0
-                      ? "✅ Futures trading at premium — bullish sentiment, longs dominant"
-                      : "⚠️ Futures trading at discount — bearish sentiment, shorts dominant"}
-                  </div>
-                  {fundingRate && (
-                    <div style={{ marginTop: "6px", fontSize: "11px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>
-                      Funding Rate: {fundingRate.toFixed(4)}% — {fundingRate > 0 ? "longs paying shorts" : "shorts paying longs"}
-                    </div>
-                  )}
+                ))}
+              </div>
+
+              {/* Committee */}
+              <div style={{ marginTop: "16px", padding: "16px", background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "10px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", fontWeight: "700", color: "#00e5a0", marginBottom: "8px" }}>⚖️ AI COMMITTEE CHAIR</div>
+                <div style={{ fontSize: "12px", color: "#888", lineHeight: "1.7" }}>
+                  After all 8 agents debate, the AI Committee Chair reviews every opinion and gives the final verdict:
+                  <strong style={{ color: "#fff" }}> SIGNAL, CONFIDENCE, ENTRY, TARGET, STOP LOSS, LEVERAGE, RISK, TIMEFRAME</strong>,
+                  plus Bullish Factors, Bearish Risks, Confidence Breakdown, and Why Not 100%.
                 </div>
-                ) : (
-                  <div style={{ textAlign: "center", padding: "20px", color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>
-                    Connecting to live streams...
-                  </div>
-                );
-              })()}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* ── CHART PATTERNS PAGE ── */}
+        {activePage === "patterns" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+              <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff" }}>
+                Chart <span style={{ color: "#00e5a0" }}>Patterns</span>
+              </div>
+              <div style={{ fontSize: "13px", color: "#555" }}>Click any pattern to view full details</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+              {CHART_PATTERNS.map((pattern) => (
+                <div key={pattern.id} onClick={() => setSelectedPattern(pattern)}
+                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "16px", cursor: "pointer", transition: "all 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(0,229,160,0.3)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"}>
+                  <div style={{ fontSize: "28px", marginBottom: "8px" }}>{pattern.emoji}</div>
+                  <div style={{ fontSize: "13px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{pattern.name}</div>
+                  <div style={{ fontSize: "10px", fontFamily: "'JetBrains Mono', monospace", color: pattern.type.includes("Bullish") ? "#00e5a0" : pattern.type.includes("Bearish") ? "#ff4d72" : "#f0c040", marginBottom: "6px" }}>{pattern.type}</div>
+                  <div style={{ fontSize: "10px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>Reliability: {pattern.reliability}</div>
+                </div>
+              ))}
+            </div>
+            {selectedPattern && (
+              <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.9)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={() => setSelectedPattern(null)}>
+                <div style={{ background: "#0a0a14", border: "1px solid rgba(0,229,160,0.3)", borderRadius: "20px", padding: "40px", maxWidth: "600px", width: "100%" }} onClick={e => e.stopPropagation()}>
+                  <div style={{ fontSize: "60px", textAlign: "center", marginBottom: "16px" }}>{selectedPattern.emoji}</div>
+                  <div style={{ fontSize: "24px", fontWeight: "800", color: "#fff", textAlign: "center", marginBottom: "8px" }}>{selectedPattern.name}</div>
+                  <div style={{ fontSize: "13px", fontFamily: "'JetBrains Mono', monospace", textAlign: "center", color: selectedPattern.type.includes("Bullish") ? "#00e5a0" : selectedPattern.type.includes("Bearish") ? "#ff4d72" : "#f0c040", marginBottom: "20px" }}>{selectedPattern.type}</div>
+                  <div style={{ fontSize: "15px", color: "#b0b0c0", lineHeight: "1.8", marginBottom: "20px", textAlign: "center" }}>{selectedPattern.description}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+                    {[
+                      { label: "Pattern Type", value: selectedPattern.type },
+                      { label: "Reliability", value: selectedPattern.reliability },
+                      { label: "Signal", value: selectedPattern.type.includes("Bullish") ? "BUY" : selectedPattern.type.includes("Bearish") ? "SELL" : "WATCH" },
+                      { label: "Timeframe", value: "All timeframes" },
+                    ].map(item => (
+                      <div key={item.label} style={{ background: "rgba(255,255,255,0.03)", borderRadius: "8px", padding: "12px" }}>
+                        <div style={{ fontSize: "10px", color: "#444", fontFamily: "'JetBrains Mono', monospace", marginBottom: "4px" }}>{item.label}</div>
+                        <div style={{ fontSize: "14px", fontWeight: "700", color: "#fff" }}>{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => setSelectedPattern(null)} style={{ width: "100%", background: "rgba(0,229,160,0.1)", border: "1px solid rgba(0,229,160,0.3)", borderRadius: "10px", padding: "12px", color: "#00e5a0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", fontWeight: "700", cursor: "pointer" }}>Close ✕</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── JOURNAL PAGE ── */}
+        {activePage === "journal" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "16px" }}>
+              📓 Trade <span style={{ color: "#a78bfa" }}>Journal</span>
+            </div>
+            <div style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: "12px", padding: "16px", marginBottom: "20px" }}>
+              <div style={{ fontSize: "13px", color: "#a78bfa", fontWeight: "600", marginBottom: "8px" }}>📓 What is the Trade Journal?</div>
+              <div style={{ fontSize: "12px", color: "#888", lineHeight: "1.7" }}>
+                The Trade Journal helps you track every trade — entry, exit, profit/loss, and reasoning.
+                Over time it shows your win rate, best trades, worst trades, and patterns in your trading behavior.
+                Professional traders use journals to improve strategy and avoid repeating mistakes.
+              </div>
+            </div>
+            {journal.length > 0 && (() => {
+              const stats = getJournalStats();
+              return (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "20px" }}>
+                  {[
+                    { label: "Win Rate", value: stats.winRate + "%", color: parseFloat(stats.winRate) >= 60 ? "#00e5a0" : "#ff4d72" },
+                    { label: "Best Trade", value: "+" + stats.bestTrade + "%", color: "#00e5a0" },
+                    { label: "Worst Trade", value: stats.worstTrade + "%", color: "#ff4d72" },
+                    { label: "Total Trades", value: journal.length, color: "#a78bfa" },
+                  ].map((s) => (
+                    <div key={s.label} style={{ background: "rgba(0,0,0,0.2)", borderRadius: "8px", padding: "16px", textAlign: "center" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: "11px", color: "#444", marginTop: "6px", letterSpacing: "1px" }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+            <button onClick={() => setShowJournal(!showJournal)} style={{ background: showJournal ? "rgba(167,139,250,0.1)" : "linear-gradient(135deg, #a78bfa, #7c3aed)", border: "1px solid rgba(167,139,250,0.4)", borderRadius: "10px", padding: "10px 20px", color: "#fff", fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", fontWeight: "700", cursor: "pointer", marginBottom: "16px" }}>
+              {showJournal ? "− Close Form" : "+ Add New Trade"}
+            </button>
+            {showJournal && (
+              <div style={{ background: "rgba(167,139,250,0.04)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "10px", padding: "16px", marginBottom: "16px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px", fontWeight: "600" }}>📝 New Trade Entry</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Coin</div>
+                    <select value={journalEntry.coin || selected.symbol} onChange={(e) => setJournalEntry({ ...journalEntry, coin: e.target.value })} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none" }}>
+                      {COINS.map(c => <option key={c.symbol} value={c.symbol} style={{ background: "#0a0a0f" }}>{c.symbol}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Type</div>
+                    <select value={journalEntry.type} onChange={(e) => setJournalEntry({ ...journalEntry, type: e.target.value })} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: journalEntry.type === "LONG" ? "#00e5a0" : "#ff4d72", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none" }}>
+                      <option value="LONG" style={{ background: "#0a0a0f", color: "#00e5a0" }}>LONG</option>
+                      <option value="SHORT" style={{ background: "#0a0a0f", color: "#ff4d72" }}>SHORT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Entry Price ($)</div>
+                    <input type="number" placeholder="63500" value={journalEntry.entry} onChange={(e) => setJournalEntry({ ...journalEntry, entry: e.target.value })} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Exit Price ($)</div>
+                    <input type="number" placeholder="65000" value={journalEntry.exit} onChange={(e) => setJournalEntry({ ...journalEntry, exit: e.target.value })} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", outline: "none" }} />
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Reason</div>
+                    <input type="text" placeholder="e.g. AI signal BUY, breakout above resistance" value={journalEntry.reason} onChange={(e) => setJournalEntry({ ...journalEntry, reason: e.target.value })} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", outline: "none" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>Notes</div>
+                    <input type="text" placeholder="e.g. Should have waited for confirmation" value={journalEntry.notes} onChange={(e) => setJournalEntry({ ...journalEntry, notes: e.target.value })} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px", color: "#e8e8f0", fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", outline: "none" }} />
+                  </div>
+                </div>
+                <button onClick={saveJournalEntry} style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#fff", border: "none", borderRadius: "8px", padding: "10px 20px", fontFamily: "'Space Grotesk', sans-serif", fontSize: "13px", fontWeight: "700", cursor: "pointer" }}>💾 Save Trade</button>
+              </div>
+            )}
+            {journal.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {journal.map((entry) => (
+                  <div key={entry.id} style={{ background: "rgba(0,0,0,0.2)", border: "1px solid " + (entry.result === "win" ? "rgba(0,229,160,0.2)" : "rgba(255,77,114,0.2)"), borderLeft: "3px solid " + (entry.result === "win" ? "#00e5a0" : "#ff4d72"), borderRadius: "8px", padding: "14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", fontWeight: "700", color: entry.type === "LONG" ? "#00e5a0" : "#ff4d72" }}>{entry.type}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", color: "#888" }}>{entry.coin}</span>
+                        <span style={{ fontSize: "11px", color: "#444" }}>{new Date(entry.timestamp).toLocaleDateString()}</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "16px", fontWeight: "700", color: entry.result === "win" ? "#00e5a0" : "#ff4d72" }}>{parseFloat(entry.pnl) > 0 ? "+" : ""}{entry.pnl}%</span>
+                        <button onClick={() => deleteJournalEntry(entry.id)} style={{ background: "transparent", border: "none", color: "#333", cursor: "pointer", fontSize: "14px" }}>🗑️</button>
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                      {[{ label: "Entry", value: "$" + entry.entry?.toLocaleString() }, { label: "Exit", value: "$" + entry.exit?.toLocaleString() }, { label: "P&L", value: (parseFloat(entry.pnl) > 0 ? "+" : "") + entry.pnl + "%" }].map((item) => (
+                        <div key={item.label}>
+                          <div style={{ fontSize: "10px", color: "#444", marginBottom: "2px", fontFamily: "'JetBrains Mono', monospace" }}>{item.label}</div>
+                          <div style={{ fontSize: "13px", color: "#c0c0d0", fontFamily: "'JetBrains Mono', monospace", fontWeight: "600" }}>{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {entry.reason && <div style={{ fontSize: "11px", color: "#666", marginTop: "6px" }}><span style={{ color: "#444" }}>Reason: </span>{entry.reason}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: "40px", color: "#333", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" }}>No trades yet. Click "+ Add New Trade" to start!</div>
+            )}
+          </div>
+        )}
+
+        {/* ── PORTFOLIO PAGE ── */}
+        {activePage === "portfolio" && (() => {
+          const coinUsage = {};
+          journal.forEach(j => { coinUsage[j.coin] = (coinUsage[j.coin] || 0) + 1; });
+          const topCoins = Object.entries(coinUsage).sort((a, b) => b[1] - a[1]);
+          const wins = journal.filter(j => j.result === "win");
+          const losses = journal.filter(j => j.result === "loss");
+          const totalPnl = journal.reduce((sum, j) => sum + parseFloat(j.pnl || 0), 0);
+          const avgPnl = journal.length > 0 ? (totalPnl / journal.length).toFixed(2) : 0;
+          const winRate = journal.length > 0 ? ((wins.length / journal.length) * 100).toFixed(1) : 0;
+          const longTrades = journal.filter(j => j.type === "LONG");
+          const shortTrades = journal.filter(j => j.type === "SHORT");
+          return (
+            <div style={{ padding: "20px" }}>
+              <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "24px" }}>
+                💼 Portfolio <span style={{ color: "#60a5fa" }}>Analytics</span>
+              </div>
+              {journal.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px", color: "#333", fontFamily: "'JetBrains Mono', monospace" }}>
+                  No trades yet. Add trades in <span style={{ color: "#a78bfa", cursor: "pointer" }} onClick={() => setActivePage("journal")}>Journal</span> to see portfolio analytics.
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "20px" }}>
+                    {[
+                      { label: "Total Trades", value: journal.length, color: "#60a5fa" },
+                      { label: "Win Rate", value: winRate + "%", color: parseFloat(winRate) >= 60 ? "#00e5a0" : "#ff4d72" },
+                      { label: "Total P&L", value: (totalPnl >= 0 ? "+" : "") + totalPnl.toFixed(2) + "%", color: totalPnl >= 0 ? "#00e5a0" : "#ff4d72" },
+                      { label: "Avg P&L", value: (parseFloat(avgPnl) >= 0 ? "+" : "") + avgPnl + "%", color: parseFloat(avgPnl) >= 0 ? "#00e5a0" : "#ff4d72" },
+                    ].map(s => (
+                      <div key={s.label} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px", textAlign: "center" }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "28px", fontWeight: "700", color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize: "11px", color: "#444", marginTop: "6px", letterSpacing: "1px" }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>🪙 Most Traded Coins</div>
+                      {topCoins.length > 0 ? topCoins.slice(0, 5).map(([coin, count]) => (
+                        <div key={coin} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", fontWeight: "700", color: "#fff" }}>{coin}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "80px", height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: (count / journal.length * 100) + "%", background: "#00e5a0", borderRadius: "2px" }} />
+                            </div>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#00e5a0" }}>{count}</span>
+                          </div>
+                        </div>
+                      )) : <div style={{ color: "#333", fontSize: "12px" }}>No data</div>}
+                    </div>
+                    <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>📊 Trade Breakdown</div>
+                      {[
+                        { label: "Winning Trades", value: wins.length, color: "#00e5a0", pct: (wins.length / journal.length * 100).toFixed(0) },
+                        { label: "Losing Trades", value: losses.length, color: "#ff4d72", pct: (losses.length / journal.length * 100).toFixed(0) },
+                        { label: "Long Trades", value: longTrades.length, color: "#60a5fa", pct: (longTrades.length / journal.length * 100).toFixed(0) },
+                        { label: "Short Trades", value: shortTrades.length, color: "#a78bfa", pct: (shortTrades.length / journal.length * 100).toFixed(0) },
+                      ].map(item => (
+                        <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                          <span style={{ fontSize: "12px", color: "#888" }}>{item.label}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "12px", fontWeight: "700", color: item.color }}>{item.value} ({item.pct}%)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <div style={{ background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>🏆 Best Trade</div>
+                      {wins.length > 0 ? (() => { const best = wins.reduce((a, b) => parseFloat(a.pnl) > parseFloat(b.pnl) ? a : b); return (<><div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "28px", fontWeight: "700", color: "#00e5a0" }}>+{best.pnl}%</div><div style={{ fontSize: "12px", color: "#555", marginTop: "4px" }}>{best.coin} · {best.type} · {new Date(best.timestamp).toLocaleDateString()}</div></>); })() : <div style={{ color: "#333", fontSize: "12px" }}>No winning trades yet</div>}
+                    </div>
+                    <div style={{ background: "rgba(255,77,114,0.04)", border: "1px solid rgba(255,77,114,0.15)", borderRadius: "12px", padding: "20px" }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#ff4d72", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>📉 Worst Trade</div>
+                      {losses.length > 0 ? (() => { const worst = losses.reduce((a, b) => parseFloat(a.pnl) < parseFloat(b.pnl) ? a : b); return (<><div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "28px", fontWeight: "700", color: "#ff4d72" }}>{worst.pnl}%</div><div style={{ fontSize: "12px", color: "#555", marginTop: "4px" }}>{worst.coin} · {worst.type} · {new Date(worst.timestamp).toLocaleDateString()}</div></>); })() : <div style={{ color: "#333", fontSize: "12px" }}>No losing trades yet</div>}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── SETTINGS PAGE ── */}
+        {activePage === "settings" && (
+          <div style={{ padding: "20px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "700", color: "#fff", marginBottom: "24px" }}>
+              ⚙️ <span style={{ color: "#00e5a0" }}>Settings</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>App Info</div>
+                {[
+                  { label: "App Name", value: "CryptoMind Pro" },
+                  { label: "Version", value: "v2.0" },
+                  { label: "AI Model", value: "openai/gpt-oss-20b" },
+                  { label: "Price Source", value: "Binance WebSocket (Real-time)" },
+                  { label: "Chart Data", value: "CoinGecko API" },
+                  { label: "AI Engine", value: "Groq Cloud" },
+                  { label: "Built by", value: "Logesh · logesh120627" },
+                ].map(item => (
+                  <div key={item.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    <span style={{ fontSize: "13px", color: "#666" }}>{item.label}</span>
+                    <span style={{ fontSize: "13px", color: "#e8e8f0", fontFamily: "'JetBrains Mono', monospace" }}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "20px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "14px" }}>Data Management</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {[
+                    { label: "Clear Predictions", desc: "Delete all saved predictions", color: "#f0c040", action: () => { clearPredictions(); alert("Predictions cleared!"); } },
+                    { label: "Clear Trade Journal", desc: "Delete all journal entries", color: "#ff4d72", action: () => { localStorage.removeItem("cryptomind_journal"); setJournal([]); alert("Journal cleared!"); } },
+                    { label: "Clear AI Memory", desc: "Reset AI committee memory", color: "#a78bfa", action: () => { localStorage.removeItem("cryptomind_memory"); setAiMemory([]); alert("AI Memory cleared!"); } },
+                    { label: "Clear All Data", desc: "Reset everything to default", color: "#ff4d72", action: () => { if(window.confirm("Clear ALL data? This cannot be undone!")) { localStorage.clear(); setPredictions([]); setJournal([]); setAiMemory([]); alert("All data cleared!"); }}},
+                  ].map(item => (
+                    <div key={item.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "rgba(0,0,0,0.2)", borderRadius: "8px" }}>
+                      <div>
+                        <div style={{ fontSize: "13px", color: "#e8e8f0", marginBottom: "2px" }}>{item.label}</div>
+                        <div style={{ fontSize: "11px", color: "#444" }}>{item.desc}</div>
+                      </div>
+                      <button onClick={item.action} style={{ background: "transparent", border: "1px solid " + item.color + "44", borderRadius: "6px", padding: "6px 14px", color: item.color, fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", fontWeight: "700", cursor: "pointer" }}>Clear</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "12px", padding: "20px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px" }}>About CryptoMind Pro</div>
+                <div style={{ fontSize: "12px", color: "#888", lineHeight: "1.7" }}>
+                  CryptoMind Pro is an AI-powered crypto market analyzer built with React, Groq AI, and Binance WebSocket.
+                  Features 8 AI trader agents that debate live market data to give professional trading signals.
+                  Built for educational purposes only. Not financial advice.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── ANALYZER PAGE ── */}
+        {activePage === "analyzer" && (
+        <div>
         
 
         {/* Metrics */}
@@ -3997,14 +4525,13 @@ function savePrediction() {
             </div>
           )}
 
-          {/* Note */}
+                    {/* Note */}
           <div style={{
             marginTop: "12px", padding: "10px", background: "#0a0a0f", borderRadius: "8px",
             fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444", lineHeight: "1.6"
           }}>
             * Position Size uses 1% risk rule — risks 1% of your capital per trade.
-            Always use proper position sizing to protect your account
-
+            Always use proper position sizing to protect your account.
           </div>
         </div>
         </div>
@@ -4012,6 +4539,7 @@ function savePrediction() {
         </div>
         </div>
       </div>
-    </>
+    </div>
+   </>
   );
 }
