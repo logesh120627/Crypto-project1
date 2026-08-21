@@ -1650,7 +1650,7 @@ function savePrediction() {
     { id: "dashboard", icon: "📊", label: "Dashboard" },
     { id: "analyzer", icon: "🔍", label: "Analyzer" },
     { id: "chat", icon: "💬", label: "AI Chat" },
-    { id: "debate", icon: "🤖", label: "AI Debate" },
+    { id: "debate", icon: "🤖", label: "AI Debate Detailed version" },
     { id: "patterns", icon: "📈", label: "Chart Patterns" },
     { id: "journal", icon: "📓", label: "Journal" },
     { id: "portfolio", icon: "💼", label: "Portfolio" },
