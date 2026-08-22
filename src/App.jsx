@@ -2471,7 +2471,7 @@ function savePrediction() {
           </div>
         </div>
 
-                {/* Coin Tabs */}
+        {/* Coin Tabs */}
         {(activePage === "analyzer" || activePage === "dashboard") && (
         <div className="coin-tabs">
           {COINS.map((c) => (
@@ -2483,6 +2483,143 @@ function savePrediction() {
               {c.symbol}
             </button>
           ))}
+        </div>
+        )}
+
+        {/* Market Type Switch + Price Card */}
+        {activePage === "analyzer" && (
+        <div style={{
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "14px", padding: "20px", marginBottom: "20px"
+        }}>
+          {/* Market Switch */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            {[
+              { id: "spot", label: "🟢 Spot", color: "#00e5a0" },
+              { id: "futures", label: "🟣 Futures", color: "#a78bfa" },
+              { id: "compare", label: "⚖️ Compare", color: "#f0c040" },
+            ].map((t) => (
+              <button key={t.id} onClick={() => setMarketType(t.id)} style={{
+                background: marketType === t.id ? t.color + "15" : "rgba(255,255,255,0.03)",
+                border: "1px solid " + (marketType === t.id ? t.color : "rgba(255,255,255,0.08)"),
+                borderRadius: "8px", padding: "8px 16px",
+                color: marketType === t.id ? t.color : "#555",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "12px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s"
+              }}>{t.label}</button>
+            ))}
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: wsConnected ? "#00e5a0" : "#ff4d72", boxShadow: wsConnected ? "0 0 8px #00e5a0" : "none", animation: "pulse 2s infinite" }} />
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444" }}>
+                {lastUpdated ? `Updated ${((Date.now() - lastUpdated) / 1000).toFixed(1)}s ago` : "Connecting..."}
+              </span>
+            </div>
+          </div>
+
+          {/* SPOT */}
+          {marketType === "spot" && (
+            <div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                {selected.symbol}/USDT — SPOT · Binance
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#fff", letterSpacing: "-2px" }}>
+                  ${spotPrice ? spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : coin?.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "—"}
+                </div>
+                {coin && (
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px", fontWeight: "600", padding: "4px 12px", borderRadius: "8px", background: isUp ? "rgba(0,229,160,0.12)" : "rgba(255,77,114,0.12)", color: isUp ? "#00e5a0" : "#ff4d72", border: "1px solid " + (isUp ? "rgba(0,229,160,0.2)" : "rgba(255,77,114,0.2)") }}>
+                    {isUp ? "▲" : "▼"} {Math.abs(change24h).toFixed(2)}% 24h
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: "11px", color: "#444", marginTop: "6px", fontFamily: "'JetBrains Mono', monospace" }}>SOURCE: Binance Spot</div>
+            </div>
+          )}
+
+          {/* FUTURES */}
+          {marketType === "futures" && (
+            <div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                {selected.symbol}USDT — PERPETUAL · Binance Futures
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "12px", marginBottom: "16px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "42px", fontWeight: "700", color: "#a78bfa", letterSpacing: "-2px" }}>
+                  ${futuresPrice ? futuresPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : spotPrice ? spotPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : coin?.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "—"}
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                {[
+                  { label: "Mark Price", value: markPrice ? "$" + markPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—", color: "#a78bfa" },
+                  { label: "Index Price", value: indexPrice ? "$" + indexPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—", color: "#60a5fa" },
+                  { label: "Funding Rate", value: fundingRate ? fundingRate.toFixed(4) + "%" : "—", color: fundingRate > 0 ? "#00e5a0" : "#ff4d72" },
+                ].map((item) => (
+                  <div key={item.label} style={{ background: "rgba(0,0,0,0.2)", borderRadius: "8px", padding: "10px" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#444", marginBottom: "4px" }}>{item.label}</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "14px", fontWeight: "700", color: item.color }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: "11px", color: "#444", marginTop: "8px", fontFamily: "'JetBrains Mono', monospace" }}>SOURCE: Binance Futures (USDⓈ-M Perpetual)</div>
+            </div>
+          )}
+
+          {/* COMPARE */}
+          {marketType === "compare" && (() => {
+            const sp = spotPrice || coin?.current_price;
+            const fp = futuresPrice || coin?.current_price;
+            const spread = fp - sp;
+            const spreadPct = ((spread / sp) * 100).toFixed(4);
+            return (
+              <div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>
+                  {selected.symbol} — Spot vs Futures Comparison
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "12px" }}>
+                  <div style={{ background: "rgba(0,229,160,0.04)", border: "1px solid rgba(0,229,160,0.15)", borderRadius: "10px", padding: "14px" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#00e5a0", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>🟢 Spot</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: "#fff" }}>
+                      ${sp ? sp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "#444", marginTop: "4px" }}>Binance Spot</div>
+                  </div>
+                  <div style={{ background: "rgba(167,139,250,0.04)", border: "1px solid rgba(167,139,250,0.15)", borderRadius: "10px", padding: "14px" }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#a78bfa", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "1px" }}>🟣 Futures</div>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "24px", fontWeight: "700", color: "#fff" }}>
+                      ${fp ? fp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "#444", marginTop: "4px" }}>Binance Futures</div>
+                  </div>
+                </div>
+                {sp && fp && (
+                  <div style={{ background: "rgba(240,192,64,0.06)", border: "1px solid rgba(240,192,64,0.2)", borderRadius: "10px", padding: "14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#f0c040", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "1px" }}>Spread (Futures - Spot)</div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: spread >= 0 ? "#00e5a0" : "#ff4d72" }}>
+                          {spread >= 0 ? "+" : ""}${Math.abs(spread).toFixed(2)}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#555", marginBottom: "4px" }}>Spread %</div>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "20px", fontWeight: "700", color: spread >= 0 ? "#00e5a0" : "#ff4d72" }}>
+                          {spreadPct}%
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: "10px", fontSize: "11px", color: "#555" }}>
+                      {spread > 0 ? "✅ Futures at premium — bullish sentiment, longs dominant" : "⚠️ Futures at discount — bearish sentiment, shorts dominant"}
+                    </div>
+                    {fundingRate && (
+                      <div style={{ marginTop: "6px", fontSize: "11px", color: "#444", fontFamily: "'JetBrains Mono', monospace" }}>
+                        Funding Rate: {fundingRate.toFixed(4)}% — {fundingRate > 0 ? "longs paying shorts" : "shorts paying longs"}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
         )}
 
